@@ -1,7 +1,7 @@
 // Session builder. Pure functions only (no DOM, no storage) so it can be tested.
 //
-// Modeled on a Barry's-style week: every day has a body-part focus (Arms & Abs,
-// Butt & Legs, Chest, Back & Abs...) shared by both rooms, and you pick the room:
+// Modeled on a Barry's-style week: every day has a body-part focus (Arms,
+// Shoulders & Abs; Legs & Abs; Chest, Back & Abs...) shared by both rooms, and you pick the room:
 //   Lift Room - strength only, heavier weights, all on the floor
 //   Red Room  - treadmill intervals alternating with floor strength
 // Training runs in continuous 4-week cycles: Base (3x10) -> Build (4x8) ->
@@ -20,18 +20,19 @@ export const TYPES = {
 export const ROOM_IDS = ['lift', 'red', 'rest'];
 
 export const FOCI = {
-  arms: { label: 'Arms & Abs', short: 'Arms & Abs' },
-  legs: { label: 'Butt & Legs', short: 'Butt & Legs' },
+  arms: { label: 'Arms, Shoulders & Abs', short: 'Arms & Shoulders' },
+  legs: { label: 'Legs & Abs', short: 'Legs' },
   upper: { label: 'Chest, Back & Abs', short: 'Chest & Back' },
   core: { label: 'Abs & Butt', short: 'Abs & Butt' },
-  full: { label: 'Full Body', short: 'Full Body' },
+  fullLower: { label: 'Full Body · Lower Focus', short: 'Full Body · Lower' },
+  fullUpper: { label: 'Full Body · Upper Focus', short: 'Full Body · Upper' },
 };
 export const FOCUS_IDS = Object.keys(FOCI);
 
-/** Monday first. A typical studio body-part calendar (studios vary; change it in Week). */
-export const DEFAULT_FOCUS_WEEK = ['arms', 'legs', 'upper', 'core', 'full', 'legs', 'full'];
-/** Monday first. Three Lift Room days, two Red Room days, weekend off. */
-export const DEFAULT_WEEK = ['lift', 'red', 'lift', 'red', 'lift', 'rest', 'rest'];
+/** Monday first. Your body-part calendar; any day can be changed or swapped. */
+export const DEFAULT_FOCUS_WEEK = ['arms', 'legs', 'upper', 'core', 'fullLower', 'fullUpper', 'fullLower'];
+/** Monday first. Lift and Red alternate through Saturday, Sunday off. */
+export const DEFAULT_WEEK = ['lift', 'red', 'lift', 'red', 'lift', 'red', 'rest'];
 
 export const PHASES = {
   1: { week: 1, name: 'Base', note: 'Groove the movements. Leave 2 reps in the tank.', mainSets: 3, mainReps: 10, accSets: 3, accReps: 12, rir: 2, bwMul: 1, floorReps: 12, speed: 0 },
@@ -67,7 +68,7 @@ export function typeFor(iso, plan, days = {}) {
 /** The body-part focus for a date: your pick for that day, else the weekly calendar. */
 export function focusFor(iso, focusWeek = DEFAULT_FOCUS_WEEK, days = {}) {
   const f = days[iso]?.focus || focusWeek[weekday(iso)];
-  return FOCI[f] ? f : 'full';
+  return FOCI[f] ? f : 'fullLower';
 }
 
 /* ------------------------------------------------------------------ random */
@@ -147,11 +148,12 @@ function makeItem(ex, role, phase, settings, short = false) {
 /* ------------------------------------------------------------------ lift */
 
 const LIFT_SLOTS = {
-  arms: { m1: ['push_v'], m2: ['pull_v', 'pull_h'], a1: ['bi'], a2: ['tri'], a3: ['shoulder'], a4: ['bi'], a5: ['tri'], c1: ['core'] },
+  arms: { m1: ['push_v'], m2: ['pull_v', 'pull_h'], a1: ['bi'], a2: ['tri'], a3: ['shoulder'], a4: ['shoulder', 'push_v'], a5: ['bi', 'tri'], c1: ['core'] },
   legs: { m1: ['squat'], m2: ['hinge'], a1: ['lunge'], a2: ['ham', 'hinge'], a3: ['glute'], a4: ['quad', 'lunge'], a5: ['calf', 'glute'], c1: ['core'] },
-  upper: { m1: ['push_h'], m2: ['pull_h', 'pull_v'], a1: ['pull_v', 'pull_h'], a2: ['push_h', 'push_v'], a3: ['shoulder'], a4: ['core'], a5: ['push_v', 'tri'], c1: ['core'] },
+  upper: { m1: ['push_h'], m2: ['pull_h', 'pull_v'], a1: ['pull_v', 'pull_h'], a2: ['push_h'], a3: ['pull_h', 'pull_v'], a4: ['core'], a5: ['push_h', 'push_v'], c1: ['core'] },
   core: { m1: ['glute', 'hinge'], m2: ['squat', 'lunge'], a1: ['core'], a2: ['glute'], a3: ['lunge', 'ham'], a4: ['core'], a5: ['glute', 'hinge'], c1: ['core'] },
-  full: { m1: ['squat', 'hinge'], m2: ['push_h', 'push_v'], a1: ['pull_h', 'pull_v'], a2: ['lunge'], a3: ['power'], a4: ['shoulder', 'push_v'], a5: ['glute', 'hinge'], c1: ['core'] },
+  fullLower: { m1: ['squat'], m2: ['hinge'], a1: ['push_h', 'push_v'], a2: ['lunge'], a3: ['pull_h', 'pull_v'], a4: ['glute', 'ham'], a5: ['power'], c1: ['core'] },
+  fullUpper: { m1: ['push_h', 'push_v'], m2: ['pull_h', 'pull_v'], a1: ['squat', 'lunge'], a2: ['push_v', 'push_h'], a3: ['pull_v', 'pull_h'], a4: ['hinge', 'glute'], a5: ['shoulder', 'bi', 'tri'], c1: ['core'] },
 };
 const LIFT_LAYOUT = {
   30: [['m1'], ['m2', 'a1'], ['a2', 'c1']],
@@ -164,7 +166,8 @@ const WARMUPS = {
   legs: ['Jumping Jacks', 'Air Squats', "World's Greatest Stretch", 'Glute Bridges', 'Lateral Lunges'],
   upper: ['Jumping Jacks', 'Arm Circles', 'Inchworm to Push-up', 'Thoracic Rotations', 'Scap Push-ups'],
   core: ['Jumping Jacks', 'Glute Bridges', 'Dead Bugs', "World's Greatest Stretch", 'Air Squats'],
-  full: ['Jumping Jacks', 'Inchworm to Push-up', 'Air Squats', "World's Greatest Stretch", 'Arm Circles'],
+  fullLower: ['Jumping Jacks', 'Air Squats', "World's Greatest Stretch", 'Glute Bridges', 'Inchworm to Push-up'],
+  fullUpper: ['Jumping Jacks', 'Arm Circles', 'Inchworm to Push-up', 'Air Squats', 'Scap Push-ups'],
 };
 const STRETCHES = ['Hamstring Stretch', 'Hip Flexor Stretch · left', 'Hip Flexor Stretch · right', "Child's Pose", 'Chest Opener', 'Figure-4 Stretch'];
 const MOBILITY = ['Cat-Cow', "World's Greatest Stretch · left", "World's Greatest Stretch · right", '90/90 Hip Switches', 'Thread the Needle', 'Deep Squat Hold', 'Pigeon · left', 'Pigeon · right', 'Thoracic Rotations', "Child's Pose"];
@@ -214,9 +217,10 @@ function liftBlocks(focus, settings, phase, mins, salt, swaps, week, date) {
   });
   if (settings.finisher) blocks.push(finisher(settings, mins, phase, `${date}|${salt}`));
   blocks.push(cooldown(mins));
-  // Bodyweight sessions run long (more reps); drop the last accessory pair to fit.
+  // Bodyweight sessions run long (more reps); drop an accessory pair to fit,
+  // never the last block, which carries the abs.
   const strength = () => blocks.filter((b) => b.kind === 'strength');
-  while (estimate(blocks) > mins + 8 && strength().length > 3) blocks.splice(blocks.indexOf(strength().at(-1)), 1);
+  while (estimate(blocks) > mins + 8 && strength().length > 3) blocks.splice(blocks.indexOf(strength().at(-2)), 1);
   return { blocks, estMin: estimate(blocks) };
 }
 
@@ -292,11 +296,12 @@ function cardioSeg(seg, settings, phase, r) {
 
 const RED_SIZE = { 30: { warm: 180, tread: 360, rounds: 2, moves: 3 }, 45: { warm: 300, tread: 540, rounds: 3, moves: 3 }, 60: { warm: 300, tread: 720, rounds: 3, moves: 4 } };
 const FLOOR_PATTERNS = {
-  arms: ['bi', 'tri', 'shoulder', 'push_v', 'bi', 'tri'],
+  arms: ['bi', 'tri', 'shoulder', 'push_v', 'shoulder', 'bi'],
   legs: ['squat', 'hinge', 'lunge', 'glute', 'ham', 'quad'],
-  upper: ['push_h', 'pull_h', 'pull_v', 'push_h', 'shoulder', 'push_v'],
+  upper: ['push_h', 'pull_h', 'pull_v', 'push_h', 'pull_h', 'push_v'],
   core: ['glute', 'core', 'hinge', 'lunge', 'core', 'glute'],
-  full: ['squat', 'push_h', 'hinge', 'pull_h', 'lunge', 'power'],
+  fullLower: ['squat', 'hinge', 'lunge', 'push_h', 'glute', 'pull_h'],
+  fullUpper: ['push_h', 'pull_h', 'push_v', 'squat', 'pull_v', 'lunge'],
 };
 
 function redBlocks(date, focus, settings, phase, mins, salt, swaps) {

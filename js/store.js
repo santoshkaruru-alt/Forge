@@ -10,7 +10,7 @@ const usesPounds = () => {
 };
 
 export const DEFAULTS = () => ({
-  version: 2,
+  version: 3,
   settings: {
     unit: usesPounds() ? 'lb' : 'kg',
     theme: 'auto',
@@ -23,7 +23,7 @@ export const DEFAULTS = () => ({
     sound: true,
     restMain: 120,
     restAcc: 60,
-    goal: 5, // sessions a week
+    goal: DEFAULT_WEEK.filter((t) => t !== 'rest').length, // sessions a week
     programStart: mondayOf(toISO(new Date())), // week 1 of the current 4-week cycle
     onboarded: false,
   },
@@ -36,21 +36,39 @@ export const DEFAULTS = () => ({
 });
 
 // Version 1 used trip dates, a recovery day in the plan and four focus names.
-const OLD_FOCUS = { lower: 'legs', upper: 'upper', full: 'full', arms: 'arms' };
+// Version 2 had one Full Body focus and weekends off.
+const V1_FOCUS = { lower: 'legs', upper: 'upper', full: 'full', arms: 'arms' };
+const V2_WEEK = ['lift', 'red', 'lift', 'red', 'lift', 'rest', 'rest'];
+const fullV3 = (f) => (f === 'full' ? 'fullLower' : f);
+
 export function migrate(parsed) {
-  if ((parsed.version || 1) >= 2) return parsed;
-  const s = { ...(parsed.settings || {}) };
-  if (s.tripStart && !s.programStart) s.programStart = s.tripStart;
-  delete s.tripStart; delete s.tripWeeks;
-  const days = {};
-  for (const [d, v] of Object.entries(parsed.days || {})) {
-    const nv = { ...v };
-    if (nv.focus) nv.focus = OLD_FOCUS[nv.focus] || 'full';
-    if (nv.type === 'recovery') nv.type = 'rest';
-    days[d] = nv;
+  let out = parsed;
+  if ((out.version || 1) < 2) {
+    const s = { ...(out.settings || {}) };
+    if (s.tripStart && !s.programStart) s.programStart = s.tripStart;
+    delete s.tripStart; delete s.tripWeeks;
+    const days = {};
+    for (const [d, v] of Object.entries(out.days || {})) {
+      const nv = { ...v };
+      if (nv.focus) nv.focus = V1_FOCUS[nv.focus] || 'full';
+      if (nv.type === 'recovery') nv.type = 'rest';
+      days[d] = nv;
+    }
+    const plan = Array.isArray(out.plan) ? out.plan.map((t) => (t === 'recovery' ? 'rest' : t)) : undefined;
+    out = { ...out, version: 2, settings: s, days, plan, swaps: {} };
   }
-  const plan = Array.isArray(parsed.plan) ? parsed.plan.map((t) => (t === 'recovery' ? 'rest' : t)) : undefined;
-  return { ...parsed, version: 2, settings: s, days, plan, swaps: {} };
+  if (out.version < 3) {
+    // New body-part calendar for every week; your single-day changes are kept.
+    const s = { ...(out.settings || {}) };
+    const wasDefault = !Array.isArray(out.plan) || out.plan.join() === V2_WEEK.join();
+    const plan = wasDefault ? [...DEFAULT_WEEK] : out.plan;
+    if (wasDefault && (s.goal == null || s.goal === 5)) s.goal = DEFAULT_WEEK.filter((t) => t !== 'rest').length;
+    const days = {};
+    for (const [d, v] of Object.entries(out.days || {})) days[d] = v.focus ? { ...v, focus: fullV3(v.focus) } : v;
+    const sessions = (out.sessions || []).map((x) => (x.focus === 'full' ? { ...x, focus: 'fullLower' } : x));
+    out = { ...out, version: 3, settings: s, plan, focusWeek: [...DEFAULT_FOCUS_WEEK], days, sessions };
+  }
+  return out;
 }
 
 let state = load();

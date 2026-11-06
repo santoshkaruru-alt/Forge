@@ -2,7 +2,7 @@ import { store, uid } from './store.js';
 import { icon } from './icons.js';
 import { EX_BY_ID, LOCATIONS, EQUIPMENT, CARDIO } from './exercises.js';
 import {
-  TYPES, ROOM_IDS, FOCI, FOCUS_IDS, PHASES, buildSession, cycleInfo, typeFor, focusFor,
+  TYPES, ROOM_IDS, FOCI, FOCUS_IDS, PHASES, DEFAULT_WEEK, DEFAULT_FOCUS_WEEK, buildSession, cycleInfo, typeFor, focusFor,
   toISO, parseISO, addDays, mondayOf, weekday, blockSeconds, alternatives, suggestLoad, lastPerformance,
   sessionVolume, personalBests, newBests,
 } from './program.js';
@@ -29,7 +29,7 @@ const dateLabel = (iso) => parseISO(iso).toLocaleDateString(undefined, { weekday
 const shortDate = (iso) => parseISO(iso).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
 const ROOM_ICON = { lift: 'dumbbell', red: 'flame', rest: 'moon', recovery: 'moon' };
 const LOC_ICON = { gym: 'dumbbell', hotel: 'pin', room: 'moon', outdoor: 'sun' };
-const focusLabel = (f) => FOCI[f]?.label || 'Full Body';
+const focusLabel = (f) => FOCI[f]?.label || (f === 'full' ? 'Full Body' : 'Full Body · Lower Focus');
 
 const ui = { tab: 'today', date: todayISO(), workout: false, collapsed: {}, month: todayISO().slice(0, 7) };
 
@@ -83,6 +83,15 @@ function setRoom(date, type) {
     if (type === s.plan[weekday(date)]) delete d.type; else d.type = type;
     if (Object.keys(d).length) s.days[date] = d; else delete s.days[date];
   });
+}
+
+/** Set a single day's room and focus, storing only what differs from the usual week. */
+function setDay(s, date, type, focus) {
+  const wd = weekday(date);
+  const d = { ...(s.days[date] || {}) };
+  if (type === s.plan[wd]) delete d.type; else d.type = type;
+  if (focus === s.focusWeek[wd]) delete d.focus; else d.focus = focus;
+  if (Object.keys(d).length) s.days[date] = d; else delete s.days[date];
 }
 
 function targetText(it) {
@@ -184,7 +193,7 @@ function renderToday() {
   const whose = isToday ? "Today's" : `${dayName(date, 'long')}'s`;
   html += `<section class="hero t-${type}">
     <div class="hero-top"><span class="eyebrow">${isRest ? 'Rest day' : `${whose} focus`}</span>
-      ${isRest ? '' : `<button class="hero-chip" data-action="focus-sheet" data-date="${date}">Change ${icon('chevD', 12)}</button>`}</div>
+      <button class="hero-chip" data-action="focus-sheet" data-date="${date}">${isRest ? 'Swap' : 'Change'} ${icon('chevD', 12)}</button></div>
     <h2 class="hero-title">${isRest ? 'Recharge' : esc(focusLabel(focus))}</h2>
     ${roomToggle(date, type)}
     <p class="hero-sub">${esc(TYPES[type].sub)}</p>
@@ -253,7 +262,7 @@ function renderWeek() {
         <span class="dc-body"><b>${type === 'rest' ? 'Rest day' : esc(focusLabel(focus))}</b><small>${sub}</small></span>
         ${icon('chevR', 16)}
       </button>
-      <div class="dc-foot">${roomToggle(d, type, 'sm')}${type === 'rest' ? '' : `<button class="text-btn sm" data-action="focus-sheet" data-date="${d}">Focus ${icon('chevD', 12)}</button>`}</div>
+      <div class="dc-foot">${roomToggle(d, type, 'sm')}<button class="text-btn sm" data-action="focus-sheet" data-date="${d}">${type === 'rest' ? 'Swap' : 'Change'} ${icon('chevD', 12)}</button></div>
     </div>`;
   }).join('');
 
@@ -263,7 +272,7 @@ function renderWeek() {
     <div class="usual-row">${st().plan.map((t, i) => `<span class="u-day t-${t}"><small>${'MTWTFSS'[i]}</small>${icon(ROOM_ICON[t], 14)}</span>`).join('')}</div>
     <div class="actions row">
       ${differs ? `<button class="btn primary sm" data-action="save-usual">Save this week as usual</button>` : ''}
-      <button class="btn sm" data-action="reset-usual">Reset to 3 Lift + 2 Red</button>
+      <button class="btn sm" data-action="reset-usual">Reset to default week</button>
     </div>
   </section>`;
   return html;
@@ -738,9 +747,20 @@ function closeSheet() {
 
 function focusSheet(date) {
   const cur = focusOf(date);
-  openSheet(`<h2>Body-part focus</h2><p class="muted small">${dateLabel(date)}. The focus is the same whether you pick Lift Room or Red Room.</p>
+  const rest = typeOf(date) === 'rest';
+  const mon = mondayOf(date);
+  const others = Array.from({ length: 7 }, (_, i) => addDays(mon, i)).filter((d) => d !== date);
+  const swap = `<h3 class="section-title">Swap with another day</h3>
+    <p class="muted small">Trades the whole day, room and focus, for this week only.</p>
+    <div class="swap-days">${others.map((d) => { const t = typeOf(d); return `<button class="swap-day t-${t}" data-action="swap-day" data-a="${date}" data-b="${d}"><b>${dayName(d)}</b><small>${t === 'rest' ? 'Rest' : esc(FOCI[focusOf(d)].short)}</small><i>${icon(ROOM_ICON[t], 12)}</i></button>`; }).join('')}</div>`;
+  if (rest) {
+    openSheet(`<h2>Rest day</h2><p class="muted small">${dateLabel(date)}. Move a workout here by swapping with another day.</p>${swap}`);
+    return;
+  }
+  openSheet(`<h2>Change ${esc(dayName(date, 'long'))}</h2><p class="muted small">${dateLabel(date)}. The focus is the same whether you pick Lift Room or Red Room.</p>
     <div class="list">${FOCUS_IDS.map((f) => `<button class="set-row radio ${cur === f ? 'on' : ''}" data-action="pick-focus" data-date="${date}" data-v="${f}"><span><b>${esc(FOCI[f].label)}</b></span><i class="dot"></i></button>`).join('')}</div>
-    <label class="check-row"><input type="checkbox" id="focus-every"> Use this every ${esc(dayName(date, 'long'))}</label>`);
+    <label class="check-row"><input type="checkbox" id="focus-every"> Use this every ${esc(dayName(date, 'long'))}</label>
+    ${swap}`);
 }
 
 function swapSheet(bid, i) {
@@ -788,7 +808,7 @@ function welcomeSheet() {
   openSheet(`<div class="welcome">
     <div class="wordmark">ONYX</div>
     <h2>Your studio week, anywhere</h2>
-    <p class="muted">Every day has a body-part focus, like Arms & Abs or Butt & Legs. You pick the room:</p>
+    <p class="muted">Every day has a body-part focus, like Arms & Shoulders or Legs, with abs built in. You pick the room:</p>
     <div class="rooms">
       <div class="room-card t-lift">${icon('dumbbell', 22)}<b>Lift Room</b><small>Strength. Heavier weights, all on the floor.</small></div>
       <div class="room-card t-red">${icon('flame', 22)}<b>Red Room</b><small>Treadmill intervals with floor strength.</small></div>
@@ -962,7 +982,17 @@ const actions = {
     });
     render(); toast('Saved as your usual week');
   },
-  'reset-usual': () => { store.update((s) => { s.plan = ['lift', 'red', 'lift', 'red', 'lift', 'rest', 'rest']; }); render(); toast('Usual week: 3 Lift + 2 Red'); },
+  'reset-usual': () => { store.update((s) => { s.plan = [...DEFAULT_WEEK]; s.focusWeek = [...DEFAULT_FOCUS_WEEK]; }); render(); toast('Back to the default week'); },
+  'swap-day': (el) => {
+    const { a, b } = el.dataset;
+    store.update((s) => {
+      const A = [typeFor(a, s.plan, s.days), focusFor(a, s.focusWeek, s.days)];
+      const B = [typeFor(b, s.plan, s.days), focusFor(b, s.focusWeek, s.days)];
+      setDay(s, a, ...B);
+      setDay(s, b, ...A);
+    });
+    closeSheet(); render(); toast(`Swapped ${dayName(a)} and ${dayName(b)}`);
+  },
   'restart-cycle': () => { store.update((s) => { s.settings.programStart = mondayOf(todayISO()); }); render(); toast('Back to week 1: Base'); },
   step: (el) => {
     const by = Number(el.dataset.by);

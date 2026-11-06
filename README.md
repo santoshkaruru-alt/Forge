@@ -1,8 +1,9 @@
 # Onyx: your studio week, anywhere
 
 Onyx gives you a Barry's-style week of strength and cardio, at home or on the
-road. Every day has a **body-part focus** (Arms & Abs, Butt & Legs, Chest, Back
-& Abs, Abs & Butt, Full Body), and you choose the room:
+road. Every day has a **body-part focus** (Arms, Shoulders & Abs; Legs & Abs;
+Chest, Back & Abs; Abs & Butt; Full Body with a lower or upper focus), and you
+choose the room:
 
 - **Lift Room**: strength. Heavier weights, lower reps, all on the floor.
 - **Red Room**: treadmill intervals alternating with floor strength circuits.
@@ -21,7 +22,8 @@ Four tabs:
 - **Today**: the day's focus, a big **Lift Room / Red Room / Rest** switch and
   one Start button. Below it: what's in the workout, where you're training (tap
   to switch when you travel), and a one-tap way to log a studio class instead.
-- **Week**: all seven days, each with its own Lift / Red / Rest switch and focus.
+- **Week**: all seven days, each with its own Lift / Red / Rest switch, and
+  **Change** to pick a different focus or swap with another day.
   Changes apply to that day only; **Save this week as usual** makes it your
   default for every week.
 - **Progress**: workouts this week against your goal, week streak, a month
@@ -31,10 +33,22 @@ Four tabs:
 
 ## The program
 
-- **Default week**: Mon Lift, Tue Red, Wed Lift, Thu Red, Fri Lift, weekend off.
-  Body-part calendar: Mon Arms & Abs, Tue Butt & Legs, Wed Chest, Back & Abs,
-  Thu Abs & Butt, Fri Full Body, Sat Butt & Legs, Sun Full Body. Studios vary,
-  so change any day's focus (once, or every week).
+- **Default week**:
+
+  | Day | Focus | Room |
+  |---|---|---|
+  | Mon | Arms & Shoulders, with abs | Lift |
+  | Tue | Legs, with abs | Red |
+  | Wed | Chest & Back, with abs | Lift |
+  | Thu | Abs & Butt | Red |
+  | Fri | Full Body, lower focus | Lift |
+  | Sat | Full Body, upper focus | Red |
+  | Sun | Rest | |
+
+  Everything is swappable: flip any day between Lift Room, Red Room and Rest,
+  change its focus once or every week, or **swap two days** (room and focus
+  trade places for that week). Abs are built into every session (a core move
+  in the last Lift block, and every Red Room floor circuit ends on core).
 - **4-week cycles, all year**: Base (3 x 10), Build (4 x 8), Peak (4 x 6), then a
   lighter Deload week, and repeat. Main lifts stay the same through a cycle so
   you can add weight; accessories rotate weekly.

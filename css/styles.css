@@ -562,3 +562,14 @@ body.in-workout .tabbar { transform: translate(-50%, 140%); opacity: 0; pointer-
 .timer .anim .ag1, .timer .anim .ag2 { stop-color: #fff; }
 .timer .anim .floor { stroke: rgba(255, 255, 255, .35); }
 .timer .anim .far { opacity: .45; }
+
+/* Swap a whole day */
+.swap-days { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin-top: 8px; }
+.swap-day { position: relative; display: grid; gap: 1px; text-align: left; padding: 10px 10px 9px 12px; border-radius: 14px; background: var(--surface-2); border: 1px solid var(--line); overflow: hidden; }
+.swap-day::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 4px; background: linear-gradient(180deg, var(--g1), var(--g2)); }
+.swap-day.t-rest::before { background: var(--surface-3); }
+.swap-day b { font-size: 14px; }
+.swap-day small { font-size: 11.5px; color: var(--text-2); line-height: 1.25; }
+.swap-day i { position: absolute; top: 9px; right: 9px; color: var(--c); }
+.swap-day.t-rest i { color: var(--text-3); }
+.swap-day:active { transform: scale(.97); }
