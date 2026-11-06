@@ -1,5 +1,5 @@
 // Onyx service worker: offline app shell. Scoped to this folder only.
-const VERSION = 'onyx-v1';
+const VERSION = 'onyx-v2';
 const SHELL = [
   './',
   'index.html',

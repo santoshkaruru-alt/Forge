@@ -1,38 +1,43 @@
 // Session builder. Pure functions only (no DOM, no storage) so it can be tested.
 //
-// A week mirrors a Barry's-style routine: Lift days (all-floor strength) and
-// Red days (treadmill intervals alternating with floor strength), plus rest or
-// active recovery. Across a trip the program runs in 4-week waves:
-// Base (3x10) -> Build (4x8) -> Peak (4x6) -> Deload, then repeats.
+// Modeled on a Barry's-style week: every day has a body-part focus (Arms & Abs,
+// Butt & Legs, Chest, Back & Abs...) shared by both rooms, and you pick the room:
+//   Lift Room - strength only, heavier weights, all on the floor
+//   Red Room  - treadmill intervals alternating with floor strength
+// Training runs in continuous 4-week cycles: Base (3x10) -> Build (4x8) ->
+// Peak (4x6) -> Deload, then repeats. It works the same at home or on the road.
 
 import { EXERCISES, EX_BY_ID, isAvailable, primaryEquip, BW_CARDIO } from './exercises.js';
 import { snapKg, toKg, loadStep } from './units.js';
 
 export const TYPES = {
-  lift: { label: 'Lift', long: 'Lift room', sub: 'Strength, all on the floor' },
-  red: { label: 'Red', long: 'Red room', sub: 'Cardio intervals + floor strength' },
-  recovery: { label: 'Recover', long: 'Active recovery', sub: 'Easy cardio + mobility' },
-  rest: { label: 'Rest', long: 'Rest day', sub: 'Walk, stretch, sleep' },
+  lift: { label: 'Lift Room', short: 'Lift', sub: 'Strength. Heavier weights, all on the floor.' },
+  red: { label: 'Red Room', short: 'Red', sub: 'Treadmill intervals + floor strength.' },
+  rest: { label: 'Rest', short: 'Rest', sub: 'Recover, walk, stretch, sleep.' },
+  recovery: { label: 'Recovery', short: 'Easy', sub: 'Easy cardio + mobility.' },
 };
-export const TYPE_IDS = Object.keys(TYPES);
+/** The choices offered for each day. Recovery is reachable from a rest day. */
+export const ROOM_IDS = ['lift', 'red', 'rest'];
 
 export const FOCI = {
-  upper: { label: 'Upper', sub: 'Chest, back & shoulders' },
-  lower: { label: 'Lower', sub: 'Butt & legs' },
-  full: { label: 'Full body', sub: 'Total body' },
-  arms: { label: 'Arms & abs', sub: 'Arms, shoulders & core' },
+  arms: { label: 'Arms & Abs', short: 'Arms & Abs' },
+  legs: { label: 'Butt & Legs', short: 'Butt & Legs' },
+  upper: { label: 'Chest, Back & Abs', short: 'Chest & Back' },
+  core: { label: 'Abs & Butt', short: 'Abs & Butt' },
+  full: { label: 'Full Body', short: 'Full Body' },
 };
 export const FOCUS_IDS = Object.keys(FOCI);
 
-/** Monday first. Three Lift days, two Red days, one easy day, one off. */
-export const DEFAULT_WEEK = ['lift', 'red', 'lift', 'red', 'lift', 'recovery', 'rest'];
-const ROTATION = { lift: ['upper', 'lower', 'full'], red: ['lower', 'upper', 'full'] };
+/** Monday first. A typical studio body-part calendar (studios vary; change it in Week). */
+export const DEFAULT_FOCUS_WEEK = ['arms', 'legs', 'upper', 'core', 'full', 'legs', 'full'];
+/** Monday first. Three Lift Room days, two Red Room days, weekend off. */
+export const DEFAULT_WEEK = ['lift', 'red', 'lift', 'red', 'lift', 'rest', 'rest'];
 
 export const PHASES = {
   1: { week: 1, name: 'Base', note: 'Groove the movements. Leave 2 reps in the tank.', mainSets: 3, mainReps: 10, accSets: 3, accReps: 12, rir: 2, bwMul: 1, floorReps: 12, speed: 0 },
-  2: { week: 2, name: 'Build', note: 'More sets, a little heavier.', mainSets: 4, mainReps: 8, accSets: 3, accReps: 10, rir: 2, bwMul: 1.15, floorReps: 12, speed: 0.2 },
-  3: { week: 3, name: 'Peak', note: 'Heaviest week. 1 rep in the tank on main lifts.', mainSets: 4, mainReps: 6, accSets: 3, accReps: 8, rir: 1, bwMul: 1.3, floorReps: 10, speed: 0.4 },
-  4: { week: 4, name: 'Deload', note: 'Lighter week so the next wave lands.', mainSets: 2, mainReps: 8, accSets: 2, accReps: 12, rir: 3, bwMul: 0.8, floorReps: 12, speed: -0.3 },
+  2: { week: 2, name: 'Build', note: 'One more set on the big lifts, a little heavier.', mainSets: 4, mainReps: 8, accSets: 3, accReps: 10, rir: 2, bwMul: 1.15, floorReps: 12, speed: 0.2 },
+  3: { week: 3, name: 'Peak', note: 'Heaviest week. Leave just 1 rep in the tank on the big lifts.', mainSets: 4, mainReps: 6, accSets: 3, accReps: 8, rir: 1, bwMul: 1.3, floorReps: 10, speed: 0.4 },
+  4: { week: 4, name: 'Deload', note: 'Lighter week so your body catches up. Next cycle starts stronger.', mainSets: 2, mainReps: 8, accSets: 2, accReps: 12, rir: 3, bwMul: 0.8, floorReps: 12, speed: -0.3 },
 };
 
 /* ------------------------------------------------------------------ dates */
@@ -45,31 +50,24 @@ export const weekday = (iso) => (parseISO(iso).getDay() + 6) % 7; // Mon = 0
 export const mondayOf = (iso) => addDays(iso, -weekday(iso));
 export const daysBetween = (a, b) => Math.round((parseISO(b) - parseISO(a)) / 864e5);
 
-/** Where a date sits in the trip and in the 4-week wave. */
-export function tripInfo(iso, settings) {
-  const start = settings.tripStart || mondayOf(iso);
-  const total = Math.max(1, settings.tripWeeks || 3);
+/** Where a date sits in the repeating 4-week cycle. Weeks start on Monday. */
+export function cycleInfo(iso, settings) {
+  const start = mondayOf(settings.programStart || iso);
   const days = daysBetween(start, iso);
-  const week = days < 0 ? 0 : Math.floor(days / 7) + 1;
-  const programWeek = week <= 0 ? 1 : ((week - 1) % 4) + 1;
-  return { start, totalWeeks: total, day: days + 1, week, inTrip: week >= 1 && week <= total, before: days < 0, programWeek, phase: PHASES[programWeek] };
+  const week = days < 0 ? 1 : Math.floor(days / 7) + 1;
+  const programWeek = ((week - 1) % 4) + 1;
+  return { start, week, programWeek, cycle: Math.floor((week - 1) / 4) + 1, phase: PHASES[programWeek] };
 }
 
-/** The session type for a date: your one-off pick, else the weekly plan. */
+/** The room for a date: your pick for that day, else your usual week. */
 export function typeFor(iso, plan, days = {}) {
   return days[iso]?.type || plan[weekday(iso)] || 'rest';
 }
 
-/** Lift and Red days rotate their focus through the week (Upper, Lower, Full...). */
-export function focusFor(iso, plan, days = {}) {
-  if (days[iso]?.focus) return days[iso].focus;
-  const type = typeFor(iso, plan, days);
-  const rot = ROTATION[type];
-  if (!rot) return null;
-  const mon = mondayOf(iso);
-  let n = 0;
-  for (let i = 0; i < weekday(iso); i += 1) if (typeFor(addDays(mon, i), plan, days) === type) n += 1;
-  return rot[n % rot.length];
+/** The body-part focus for a date: your pick for that day, else the weekly calendar. */
+export function focusFor(iso, focusWeek = DEFAULT_FOCUS_WEEK, days = {}) {
+  const f = days[iso]?.focus || focusWeek[weekday(iso)];
+  return FOCI[f] ? f : 'full';
 }
 
 /* ------------------------------------------------------------------ random */
@@ -149,10 +147,11 @@ function makeItem(ex, role, phase, settings, short = false) {
 /* ------------------------------------------------------------------ lift */
 
 const LIFT_SLOTS = {
-  upper: { m1: ['push_h'], m2: ['pull_h', 'pull_v'], a1: ['push_v'], a2: ['pull_v', 'pull_h'], a3: ['shoulder'], a4: ['tri'], a5: ['bi'], c1: ['core'] },
-  lower: { m1: ['squat'], m2: ['hinge'], a1: ['lunge'], a2: ['ham', 'hinge'], a3: ['glute'], a4: ['quad', 'lunge'], a5: ['calf', 'glute'], c1: ['core'] },
-  full: { m1: ['squat', 'hinge'], m2: ['push_h', 'push_v'], a1: ['pull_h', 'pull_v'], a2: ['lunge'], a3: ['power'], a4: ['shoulder', 'push_v'], a5: ['glute', 'hinge'], c1: ['core'] },
   arms: { m1: ['push_v'], m2: ['pull_v', 'pull_h'], a1: ['bi'], a2: ['tri'], a3: ['shoulder'], a4: ['bi'], a5: ['tri'], c1: ['core'] },
+  legs: { m1: ['squat'], m2: ['hinge'], a1: ['lunge'], a2: ['ham', 'hinge'], a3: ['glute'], a4: ['quad', 'lunge'], a5: ['calf', 'glute'], c1: ['core'] },
+  upper: { m1: ['push_h'], m2: ['pull_h', 'pull_v'], a1: ['pull_v', 'pull_h'], a2: ['push_h', 'push_v'], a3: ['shoulder'], a4: ['core'], a5: ['push_v', 'tri'], c1: ['core'] },
+  core: { m1: ['glute', 'hinge'], m2: ['squat', 'lunge'], a1: ['core'], a2: ['glute'], a3: ['lunge', 'ham'], a4: ['core'], a5: ['glute', 'hinge'], c1: ['core'] },
+  full: { m1: ['squat', 'hinge'], m2: ['push_h', 'push_v'], a1: ['pull_h', 'pull_v'], a2: ['lunge'], a3: ['power'], a4: ['shoulder', 'push_v'], a5: ['glute', 'hinge'], c1: ['core'] },
 };
 const LIFT_LAYOUT = {
   30: [['m1'], ['m2', 'a1'], ['a2', 'c1']],
@@ -161,10 +160,11 @@ const LIFT_LAYOUT = {
 };
 
 const WARMUPS = {
-  upper: ['Jumping Jacks', 'Arm Circles', 'Inchworm to Push-up', 'Thoracic Rotations', 'Scap Push-ups'],
-  lower: ['Jumping Jacks', 'Air Squats', "World's Greatest Stretch", 'Glute Bridges', 'Lateral Lunges'],
-  full: ['Jumping Jacks', 'Inchworm to Push-up', 'Air Squats', "World's Greatest Stretch", 'Arm Circles'],
   arms: ['Jumping Jacks', 'Arm Circles', 'Scap Push-ups', 'Thoracic Rotations', 'Dead Bugs'],
+  legs: ['Jumping Jacks', 'Air Squats', "World's Greatest Stretch", 'Glute Bridges', 'Lateral Lunges'],
+  upper: ['Jumping Jacks', 'Arm Circles', 'Inchworm to Push-up', 'Thoracic Rotations', 'Scap Push-ups'],
+  core: ['Jumping Jacks', 'Glute Bridges', 'Dead Bugs', "World's Greatest Stretch", 'Air Squats'],
+  full: ['Jumping Jacks', 'Inchworm to Push-up', 'Air Squats', "World's Greatest Stretch", 'Arm Circles'],
 };
 const STRETCHES = ['Hamstring Stretch', 'Hip Flexor Stretch · left', 'Hip Flexor Stretch · right', "Child's Pose", 'Chest Opener', 'Figure-4 Stretch'];
 const MOBILITY = ['Cat-Cow', "World's Greatest Stretch · left", "World's Greatest Stretch · right", '90/90 Hip Switches', 'Thread the Needle', 'Deep Squat Hold', 'Pigeon · left', 'Pigeon · right', 'Thoracic Rotations', "Child's Pose"];
@@ -172,17 +172,17 @@ const MOBILITY = ['Cat-Cow', "World's Greatest Stretch · left", "World's Greate
 const bucket = (minutes) => (minutes <= 35 ? 30 : minutes <= 50 ? 45 : 60);
 const equipKey = (s) => [...(s.equipment || [])].sort().join('+') || 'bw';
 
-/** A deterministic session for a date. Main lifts stay put for the whole trip
+/** A deterministic session for a date. Main lifts stay put through the cycle
  *  (so you can add weight week to week); accessories rotate weekly. */
 export function buildSession({ date, type, focus, settings, swaps = {}, salt = 0 }) {
-  const trip = tripInfo(date, settings);
-  const phase = trip.phase;
+  const cyc = cycleInfo(date, settings);
+  const phase = cyc.phase;
   const mins = bucket(settings.minutes || 45);
-  const base = { date, type, focus, phase: phase.name, phaseNote: phase.note, programWeek: trip.programWeek, minutes: mins };
+  const base = { date, type, focus, phase: phase.name, phaseNote: phase.note, programWeek: cyc.programWeek, minutes: mins };
   if (type === 'rest') return { ...base, title: 'Rest day', blocks: [], estMin: 0 };
   if (type === 'recovery') return { ...base, title: 'Active recovery', ...recoveryBlocks(settings, mins, `${date}|${salt}`) };
-  if (type === 'red') return { ...base, title: `Red · ${FOCI[focus].label}`, ...redBlocks(date, focus, settings, phase, mins, salt, swaps) };
-  return { ...base, title: `Lift · ${FOCI[focus].label}`, ...liftBlocks(focus, settings, phase, mins, salt, swaps, trip.programWeek, date) };
+  if (type === 'red') return { ...base, title: `Red Room · ${FOCI[focus].label}`, ...redBlocks(date, focus, settings, phase, mins, salt, swaps) };
+  return { ...base, title: `Lift Room · ${FOCI[focus].label}`, ...liftBlocks(focus, settings, phase, mins, salt, swaps, cyc.programWeek, date) };
 }
 
 function liftBlocks(focus, settings, phase, mins, salt, swaps, week, date) {
@@ -292,10 +292,11 @@ function cardioSeg(seg, settings, phase, r) {
 
 const RED_SIZE = { 30: { warm: 180, tread: 360, rounds: 2, moves: 3 }, 45: { warm: 300, tread: 540, rounds: 3, moves: 3 }, 60: { warm: 300, tread: 720, rounds: 3, moves: 4 } };
 const FLOOR_PATTERNS = {
-  lower: ['squat', 'hinge', 'lunge', 'glute', 'ham', 'quad'],
-  upper: ['push_h', 'pull_h', 'push_v', 'pull_v', 'shoulder', 'tri'],
-  full: ['squat', 'push_h', 'hinge', 'pull_h', 'lunge', 'power'],
   arms: ['bi', 'tri', 'shoulder', 'push_v', 'bi', 'tri'],
+  legs: ['squat', 'hinge', 'lunge', 'glute', 'ham', 'quad'],
+  upper: ['push_h', 'pull_h', 'pull_v', 'push_h', 'shoulder', 'push_v'],
+  core: ['glute', 'core', 'hinge', 'lunge', 'core', 'glute'],
+  full: ['squat', 'push_h', 'hinge', 'pull_h', 'lunge', 'power'],
 };
 
 function redBlocks(date, focus, settings, phase, mins, salt, swaps) {
@@ -308,12 +309,15 @@ function redBlocks(date, focus, settings, phase, mins, salt, swaps) {
   const tread = (key, n) => ({ id: `cardio${n}`, kind: 'intervals', title: `${machineName} ${n}`, sub: TREAD_TEMPLATES[key].name, segments: fillTemplate(TREAD_TEMPLATES[key].segs, size.tread).map((s) => cardioSeg(s, settings, phase, r)) });
   const used = new Set();
   const patterns = shuffle(FLOOR_PATTERNS[focus], r);
+  // Floor work is dumbbells, a bench, bands and bodyweight; skip barbells and machines if there are dumbbells.
+  const all = settings.equipment || [];
+  const floorKit = all.includes('db') || all.includes('kb') ? all.filter((e) => e !== 'barbell' && e !== 'machine') : all;
   const floor = (n) => {
     const items = [];
     const mine = patterns.slice((n - 1) * (size.moves - 1)).concat(patterns).slice(0, size.moves - 1);
     [...mine.map((p) => [p]), ['core']].forEach((pats, i) => {
       const key = `red:${focus}:f${n}${i}`;
-      const ex = chooseExercise(pats, { equipment: settings.equipment || [], used, r, main: false, preferred: swaps[key] });
+      const ex = chooseExercise(pats, { equipment: floorKit, used, r, main: false, preferred: swaps[key] });
       if (!ex) return;
       used.add(ex.id);
       items.push({ ...makeItem(ex, 'floor', phase, settings), sets: size.rounds, rest: 15, slot: `f${n}${i}`, swapKey: key });
@@ -411,7 +415,8 @@ export function suggestLoad(history, item, unit, beforeDate) {
   const equip = primaryEquip(ex);
   const step = toKg(loadStep(unit, equip), unit);
   let kg = snapKg(est / (1 + (item.reps + item.rir) / 30), unit, equip);
-  if (allHit && item.reps >= (last.targetReps || 0) && kg <= top + 1e-6) kg = snapKg(top + step, unit, equip);
+  // Same scheme as last time and every rep hit: add a step. Other schemes trust the estimate.
+  if (allHit && item.reps === last.targetReps && item.rir === rir && kg <= top + 1e-6) kg = snapKg(top + step, unit, equip);
   if (!allHit && kg > top) kg = snapKg(top, unit, equip);
   return { kg, lastKg: top, lastReps: Math.max(...sets.map((s) => s.reps)), date: last.date, up: kg > top + 1e-6, down: kg < top - 1e-6 };
 }

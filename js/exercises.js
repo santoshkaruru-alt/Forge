@@ -20,10 +20,10 @@ export const CARDIO = [
 ];
 
 export const LOCATIONS = [
-  { id: 'gym', name: 'Full gym', sub: 'Barbells, machines, dumbbells', equipment: ['barbell', 'machine', 'db', 'kb', 'bench', 'band', 'bar'], cardio: 'treadmill' },
-  { id: 'hotel', name: 'Hotel gym', sub: 'Dumbbells, bench, cardio machine', equipment: ['db', 'bench'], cardio: 'treadmill' },
-  { id: 'room', name: 'Room / Airbnb', sub: 'Bodyweight, a band if you packed one', equipment: [], cardio: 'none' },
-  { id: 'outdoor', name: 'Park / outdoors', sub: 'Bodyweight, a bar, open space', equipment: ['bar'], cardio: 'run' },
+  { id: 'gym', name: 'My gym', sub: 'Full gym: barbells, machines, dumbbells', equipment: ['barbell', 'machine', 'db', 'kb', 'bench', 'band', 'bar'], cardio: 'treadmill' },
+  { id: 'hotel', name: 'Hotel gym', sub: 'Dumbbells, a bench and a treadmill', equipment: ['db', 'bench'], cardio: 'treadmill' },
+  { id: 'room', name: 'Room', sub: 'Hotel room or home, no equipment', equipment: [], cardio: 'none' },
+  { id: 'outdoor', name: 'Outdoors', sub: 'Park with a bar, room to run', equipment: ['bar'], cardio: 'run' },
 ];
 
 /**
