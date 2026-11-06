@@ -8,6 +8,7 @@ import {
 } from './program.js';
 import { toKg, fromKg, fmtWeight, fmtSpeed, speedUnit, toMph, fromMph, trimNum } from './units.js';
 import { beep, unlockAudio, keepAwake, Countdown, setSound } from './timer.js';
+import { mountAnim, hasAnim, animForName, toggleAnim, setAnimSpeed } from './anim.js';
 
 /* ------------------------------------------------------------------ helpers */
 
@@ -38,6 +39,15 @@ function toast(msg) {
   t.classList.add('show');
   clearTimeout(toast.id);
   toast.id = setTimeout(() => t.classList.remove('show'), 2200);
+}
+
+/** Start any exercise animations placed in the markup. */
+function hydrateAnims(root = document) {
+  root.querySelectorAll('[data-anim]:not([data-mounted])').forEach((h) => {
+    h.dataset.mounted = '1';
+    const name = h.dataset.animName;
+    mountAnim(h, name ? animForName(name) : h.dataset.anim, { restart: h.dataset.restart === '1' });
+  });
 }
 
 /* ------------------------------------------------------------------ theme */
@@ -136,7 +146,7 @@ function previewList(plan) {
     if (b.kind === 'strength') {
       return `<li class="pv ${b.style}"><span class="pv-tag">${esc(b.title.replace('Floor ', 'F'))}</span><div class="pv-items">${b.items.map((it) => {
         const sug = suggestLoad(st().sessions, it, U(), plan.date);
-        return `<div class="pv-item"><span class="pv-name">${esc(exName(it.exId))}</span><span class="pv-meta num">${targetText(it)}${sug ? ` · <b>${wt(sug.kg)} ${unitLabel()}</b>` : ''}</span></div>`;
+        return `<button class="pv-item" data-action="exercise" data-id="${it.exId}" aria-label="How to do ${esc(exName(it.exId))}"><span class="pv-name">${esc(exName(it.exId))}<i class="pv-play">${icon('play', 10)}</i></span><span class="pv-meta num">${targetText(it)}${sug ? ` · <b>${wt(sug.kg)} ${unitLabel()}</b>` : ''}</span></button>`;
       }).join('')}</div></li>`;
     }
     const cardio = b.kind === 'intervals' && b.id !== 'warmup';
@@ -513,7 +523,8 @@ function renderWorkout() {
       else if (lastTxt) hint = `<p class="hint num">Last time: ${esc(lastTxt)}</p>`;
       else if (ex.load === 'w') hint = `<p class="hint">First time? Pick a weight you could lift about ${it.reps + it.rir} times.</p>`;
       html += `<div class="ex">
-        <div class="ex-head"><div class="grow"><b>${esc(ex.name)}</b><small class="muted num">${targetText(it)}${ex.load === 'w' ? ` · ${rirText(it.rir)}` : ''}</small></div></div>
+        <div class="ex-row">${hasAnim(ex.id) ? `<button class="ex-anim" data-anim="${ex.id}" data-action="ex-info" data-b="${b.id}" data-i="${i}" aria-label="Watch how to do ${esc(ex.name)}"></button>` : ''}
+        <div class="ex-head grow"><b>${esc(ex.name)}</b><small class="muted num">${targetText(it)}${ex.load === 'w' ? ` · ${rirText(it.rir)}` : ''}</small></div></div>
         ${hint}
         <div class="sets">${Array.from({ length: it.sets }, (_, k) => setRow(b, i, it, k, ex, sug)).join('')}</div>
         <div class="ex-tools"><button class="text-btn sm" data-action="ex-info" data-b="${b.id}" data-i="${i}">${icon('info', 14)} How to</button><button class="text-btn sm" data-action="swap" data-b="${b.id}" data-i="${i}">${icon('swap', 14)} Swap</button><span class="faint small num">Rest ${clock(it.rest)}</span></div>
@@ -633,11 +644,15 @@ function paintTimer(r) {
   const next = segs[tm.idx + 1];
   const pct = seg.sec ? (1 - r / seg.sec) * 100 : 0;
   const label = seg.move ? seg.label : ({ walk: 'Easy', base: 'Steady', push: 'Push it', sprint: 'Everything you have' }[seg.level] || '');
+  const animName = animForName(segTitle(seg)) ? segTitle(seg) : '';
+  const keep = animName && tm.animName === animName ? $('#timer .tm-anim svg') : null;
+  tm.animName = animName;
   $('#timer').className = `timer lvl-${seg.level || 'none'}`;
   $('#timer').innerHTML = `<div class="tm-inner">
     <div class="tm-top"><button class="icon-btn glass" data-action="timer-close" aria-label="Close timer">${icon('x', 20)}</button>
       <div class="tm-meta"><b>${esc(tm.block.title)}</b><small class="num">${tm.idx < 0 ? 'Starting' : `${tm.idx + 1} of ${segs.length}`} · ${clock(left)} left</small></div><span style="width:44px"></span></div>
     <div class="tm-center">
+      ${animName ? `<div class="tm-anim" ${keep ? '' : `data-anim="1" data-anim-name="${esc(animName)}"`}></div>` : ''}
       <div class="tm-label">${esc(label)}</div>
       <div class="tm-name">${esc(segTitle(seg))}</div>
       <div class="tm-clock num">${clock(r)}</div>
@@ -652,6 +667,8 @@ function paintTimer(r) {
       <button class="icon-btn glass lg" data-action="timer-next" aria-label="Next">${icon('next', 22)}</button>
     </div>
   </div>`;
+  if (keep) $('#timer .tm-anim').appendChild(keep);
+  else hydrateAnims($('#timer'));
 }
 function closeTimer() { tm.cd?.stop(); $('#timer').hidden = true; document.body.classList.remove('no-scroll'); }
 
@@ -709,6 +726,7 @@ function openSheet(html, kind = '') {
   sheetKind = kind;
   const root = $('#sheet-root');
   root.innerHTML = `<div class="scrim" data-action="close-sheet"></div><div class="sheet" role="dialog" aria-modal="true"><div class="grabber"></div>${html}</div>`;
+  hydrateAnims(root);
   requestAnimationFrame(() => root.classList.add('open'));
 }
 function closeSheet() {
@@ -731,7 +749,7 @@ function swapSheet(bid, i) {
   const it = b.items[i];
   const alts = alternatives(it, b, a.plan.focus, a.plan.type, S().equipment);
   openSheet(`<h2>Swap exercise</h2><p class="muted small">Same kind of movement, with the equipment you have. Your pick is remembered.</p>
-    <div class="list">${alts.map((e) => `<button class="set-row radio ${e.id === it.exId ? 'on' : ''}" data-action="do-swap" data-b="${bid}" data-i="${i}" data-v="${e.id}"><span><b>${esc(e.name)}</b><small>${esc(e.cue || '')}</small></span><i class="dot"></i></button>`).join('')}</div>`);
+    <div class="list">${alts.map((e) => `<button class="set-row radio with-anim ${e.id === it.exId ? 'on' : ''}" data-action="do-swap" data-b="${bid}" data-i="${i}" data-v="${e.id}">${hasAnim(e.id) ? `<span class="swap-anim" data-anim="${e.id}"></span>` : ''}<span><b>${esc(e.name)}</b><small>${esc(e.cue || '')}</small></span><i class="dot"></i></button>`).join('')}</div>`);
 }
 
 function infoSheet(exId) {
@@ -739,6 +757,8 @@ function infoSheet(exId) {
   const hist = st().sessions.filter((s) => (s.entries || []).some((e) => e.exId === exId)).sort((a, b) => b.date.localeCompare(a.date)).slice(0, 6);
   const q = encodeURIComponent(`${ex.name} exercise form`);
   openSheet(`<h2>${esc(ex.name)}</h2>
+    ${hasAnim(exId) ? `<div class="howto-anim" data-anim="${exId}" data-restart="1" data-action="anim-toggle" role="button" aria-label="Pause or play the animation"></div>
+    <div class="howto-ctrl"><small>Tap the animation to pause</small><div class="seg mini" id="anim-speed"><button data-action="anim-speed" data-v="0.5">Slow</button><button class="on" data-action="anim-speed" data-v="1">Normal</button></div></div>` : ''}
     <p class="cue">${esc(ex.cue || '')}</p>
     <p class="muted small">${ex.req.length ? `Needs: ${ex.req.map((r) => EQUIPMENT.find((e) => e.id === r)?.name).join(', ')}` : 'No equipment needed'}${ex.uni ? ' · Do each side' : ''}</p>
     <a class="btn" href="https://www.youtube.com/results?search_query=${q}" target="_blank" rel="noopener">${icon('video', 16)} Watch a demo</a>
@@ -796,6 +816,7 @@ function render() {
   lastScreen = screen;
   document.body.classList.toggle('in-workout', !!inWorkout);
   view.innerHTML = inWorkout ? renderWorkout() : TABS[ui.tab]();
+  hydrateAnims(view);
   document.querySelectorAll('.tab').forEach((t) => t.setAttribute('aria-current', !inWorkout && t.dataset.tab === ui.tab ? 'page' : 'false'));
 }
 
@@ -876,6 +897,16 @@ const actions = {
   'timer-prev': () => { if (tm.idx > 0) gotoSeg(tm.idx - 1); else { tm.cd.stop(); tm.cd.start(currentSeg().sec); } },
   'rest-add': (el) => rest.cd?.add(Number(el.dataset.by)),
   'rest-skip': () => stopRest(),
+  'anim-toggle': (el) => {
+    const svg = el.querySelector('svg');
+    const paused = toggleAnim(svg);
+    el.querySelector('.paused-tag')?.remove();
+    if (paused) el.insertAdjacentHTML('afterbegin', '<span class="paused-tag">Paused</span>');
+  },
+  'anim-speed': (el) => {
+    setAnimSpeed($('.howto-anim svg'), Number(el.dataset.v));
+    document.querySelectorAll('#anim-speed button').forEach((b) => b.classList.toggle('on', b === el));
+  },
   swap: (el) => swapSheet(el.dataset.b, Number(el.dataset.i)),
   'do-swap': (el) => {
     const { b: bid, i, v } = el.dataset;

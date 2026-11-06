@@ -10,9 +10,9 @@ road. Every day has a **body-part focus** (Arms & Abs, Butt & Legs, Chest, Back
 Workouts adapt to wherever you are: your usual gym, a hotel gym, a hotel room
 floor or a park. Everything runs on your device, no account, works offline.
 
-| Today | Week | Workout | Treadmill timer | Progress |
-|---|---|---|---|---|
-| ![Today](docs/screen-today.png) | ![Week](docs/screen-week.png) | ![Workout](docs/screen-workout.png) | ![Timer](docs/screen-timer.png) | ![Progress](docs/screen-progress.png) |
+| Today | Week | Workout | How to | Treadmill timer | Progress |
+|---|---|---|---|---|---|
+| ![Today](docs/screen-today.png) | ![Week](docs/screen-week.png) | ![Workout](docs/screen-workout.png) | ![How to](docs/screen-howto.png) | ![Timer](docs/screen-timer.png) | ![Progress](docs/screen-progress.png) |
 
 ## How it's laid out
 
@@ -47,6 +47,25 @@ Four tabs:
   cool-down.
 - **Weight suggestions** from your last session: hit every rep and it adds 5 lb
   (2 to 2.5 kg); when the reps change it works out the right weight.
+
+## Exercise animations
+
+Every exercise (all 107) has its own animation showing the movement, drawn in
+the app's colors with the equipment it uses: dumbbells, barbell, kettlebell,
+bench, cable machine, band, pull-up bar, wall or door.
+
+- In a workout, each exercise has a moving thumbnail. Tap it (or **How to**) for
+  a large player with **Slow** and **Normal** speed; tap the player to pause.
+- In **Swap**, every option shows its animation so you can compare moves.
+- On Today, tap any exercise in "What's in it" to watch it before you start.
+- The interval timer plays the move for warm-ups and bodyweight cardio
+  (jumping jacks, high knees, burpees, mountain climbers and more).
+- With Reduce Motion turned on in your phone settings, animations step between
+  positions instead of moving smoothly.
+
+They are built from a small posable figure: each motion is a few keyframes, and
+knees and elbows are solved with inverse kinematics so feet stay planted and
+hands stay on the floor, bar or bench. Everything works offline.
 
 ## Workout mode
 
@@ -85,6 +104,7 @@ fit/js/exercises.js   exercise library, equipment, locations
 fit/js/units.js       lb / kg and mph / km/h helpers (pure, unit-tested)
 fit/js/store.js       local-first storage, migration, backup / restore
 fit/js/timer.js       beeps, vibration, screen wake lock, countdown
+fit/js/anim.js        exercise animations: posable figure, keyframes, IK, props
 fit/sw.js             offline cache, scoped to fit/
 tests/fit-program.test.mjs
 ```

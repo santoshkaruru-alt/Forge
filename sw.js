@@ -1,5 +1,5 @@
 // Onyx service worker: offline app shell. Scoped to this folder only.
-const VERSION = 'onyx-v2';
+const VERSION = 'onyx-v3';
 const SHELL = [
   './',
   'index.html',
@@ -11,6 +11,7 @@ const SHELL = [
   'js/units.js',
   'js/timer.js',
   'js/icons.js',
+  'js/anim.js',
   'manifest.webmanifest',
   'icons/icon.svg',
   'icons/icon-192.png',

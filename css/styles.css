@@ -212,7 +212,9 @@ a { color: inherit; }
 .pv.timed .pv-tag { background: var(--surface-3); color: var(--text-2); }
 .pv.cardio .pv-tag { background: linear-gradient(135deg, var(--red-1), var(--red-2)); color: #fff; }
 .pv-items { flex: 1; min-width: 0; display: grid; gap: 6px; }
-.pv-item { display: flex; justify-content: space-between; gap: 10px; align-items: flex-start; min-height: 28px; }
+.pv-item { display: flex; justify-content: space-between; gap: 10px; align-items: flex-start; min-height: 28px; width: 100%; text-align: left; }
+button.pv-item:active { opacity: .6; }
+.pv-play { display: inline-flex; margin-left: 6px; vertical-align: 0; color: var(--c); opacity: .7; }
 .pv-name { font-weight: 600; padding-top: 4px; min-width: 0; }
 .pv-name small { display: block; font-size: 12.5px; font-weight: 500; color: var(--text-3); }
 .pv-meta { font-size: 13px; color: var(--text-2); white-space: nowrap; padding-top: 5px; }
@@ -521,3 +523,42 @@ body.in-workout .tabbar { transform: translate(-50%, 140%); opacity: 0; pointer-
 @media (min-width: 460px) { .stats { grid-template-columns: repeat(4, 1fr); } }
 @media (max-width: 360px) { .rt span { font-size: 12.5px; } .hero-title { font-size: 32px; } }
 @media (min-width: 720px) { .view { padding-top: calc(var(--safe-t) + 36px); } }
+
+/* Exercise animations */
+.anim { display: block; width: 100%; height: auto; aspect-ratio: 5 / 4; overflow: hidden; }
+.anim .floor { stroke: var(--line-strong); stroke-width: 2; stroke-linecap: round; }
+.anim .limb { fill: none; stroke-linecap: round; stroke-linejoin: round; }
+.anim .trunk { stroke-width: 10.5; }
+.anim .leg { stroke-width: 8.5; }
+.anim .arm { stroke-width: 7; }
+.anim .far { opacity: .38; }
+.anim .ag1 { stop-color: var(--g1); }
+.anim .ag2 { stop-color: var(--g2); }
+.anim .pr-fill { fill: var(--surface-3); }
+.anim .pr-line { stroke: var(--surface-3); stroke-linecap: round; }
+.anim .pr-bar { stroke: var(--text-2); stroke-width: 3.5; stroke-linecap: round; }
+.anim .pr-post { stroke: var(--surface-3); stroke-width: 4; }
+.anim .pr-handle { stroke: var(--text-2); stroke-width: 3; stroke-linecap: round; }
+.anim .pr-plate { stroke: var(--text); stroke-width: 4.5; stroke-linecap: round; }
+.anim .pr-plate-c { fill: var(--surface); stroke: var(--text); stroke-width: 3.5; }
+.anim .pr-dark { fill: var(--text); }
+.anim .pr-kb-h { fill: none; stroke: var(--text); stroke-width: 2.5; stroke-linecap: round; }
+.anim .pr-band { stroke: #ff8a1f; stroke-width: 2.5; stroke-linecap: round; }
+.anim .pr-band-c { fill: none; stroke: #ff8a1f; stroke-width: 2.5; }
+.anim .pr-towel { stroke: #10b28c; stroke-width: 3.5; stroke-linecap: round; }
+.anim .pr-cable { stroke: var(--text-3); stroke-width: 1.4; }
+.anim .pr-pad { fill: var(--text-3); }
+.ex-row { display: flex; gap: 12px; align-items: center; }
+.ex-anim { width: 84px; flex: none; border-radius: 16px; background: var(--surface-2); padding: 4px 2px 0; overflow: hidden; position: relative; }
+.ex-anim::after { content: ""; position: absolute; right: 5px; bottom: 5px; width: 16px; height: 16px; border-radius: 999px; background: var(--surface) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%239699b0' stroke-width='3' stroke-linecap='round'%3E%3Cpath d='M8 3h-3a2 2 0 0 0-2 2v3M21 8V5a2 2 0 0 0-2-2h-3M3 16v3a2 2 0 0 0 2 2h3M16 21h3a2 2 0 0 0 2-2v-3'/%3E%3C/svg%3E") center / 10px no-repeat; }
+.howto-anim { border-radius: 22px; padding: 12px 10px 6px; margin: 4px 0 10px; background: radial-gradient(120% 90% at 50% 0%, var(--tint), transparent 70%), var(--surface-2); position: relative; cursor: pointer; }
+.howto-anim .paused-tag { position: absolute; top: 10px; left: 12px; font-size: 11px; font-weight: 750; letter-spacing: .08em; text-transform: uppercase; color: var(--text-3); }
+.howto-ctrl { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 10px; }
+.howto-ctrl small { color: var(--text-3); font-size: 12.5px; }
+.swap-anim { width: 64px; flex: none; border-radius: 12px; background: var(--surface-2); padding: 3px 1px 0; }
+.set-row.with-anim { justify-content: flex-start; }
+.set-row.with-anim > span:nth-child(2) { flex: 1; display: grid; gap: 2px; min-width: 0; }
+.tm-anim { width: min(220px, 56vw); margin: 0 auto 4px; }
+.timer .anim .ag1, .timer .anim .ag2 { stop-color: #fff; }
+.timer .anim .floor { stroke: rgba(255, 255, 255, .35); }
+.timer .anim .far { opacity: .45; }
