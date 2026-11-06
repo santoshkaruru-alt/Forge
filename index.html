@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Onyx Training</title>
+  <meta name="description" content="Strength and cardio workouts for the road. Lift and Red days that adapt to a full gym, a hotel gym or a hotel room. Private, on your device.">
+  <meta name="theme-color" content="#000000" media="(prefers-color-scheme: dark)">
+  <meta name="theme-color" content="#f2f2f2" media="(prefers-color-scheme: light)">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Onyx">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="icons/icon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+  <link rel="stylesheet" href="css/styles.css">
+  <script>
+    // Apply the saved theme before first paint to avoid a flash.
+    try {
+      var s = JSON.parse(localStorage.getItem('onyx.v1') || '{}').settings || {};
+      if (s.theme === 'dark' || s.theme === 'light') document.documentElement.dataset.theme = s.theme;
+    } catch (e) {}
+  </script>
+</head>
+<body>
+  <div class="app">
+    <main id="view" class="view" tabindex="-1"></main>
+    <nav class="tabbar" aria-label="Main">
+      <button class="tab" data-tab="today" aria-label="Today"></button>
+      <button class="tab" data-tab="plan" aria-label="Plan"></button>
+      <button class="tab" data-tab="progress" aria-label="Progress"></button>
+      <button class="tab" data-tab="settings" aria-label="Settings"></button>
+    </nav>
+  </div>
+
+  <div id="restbar" class="restbar" hidden role="timer" aria-live="off"></div>
+  <div id="timer" class="timer" hidden role="dialog" aria-modal="true" aria-label="Interval timer"></div>
+  <div id="sheet-root"></div>
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+  <input id="file-input" type="file" accept="application/json,.json" hidden>
+
+  <noscript>Onyx needs JavaScript to run.</noscript>
+  <script type="module" src="js/app.js"></script>
+</body>
+</html>
