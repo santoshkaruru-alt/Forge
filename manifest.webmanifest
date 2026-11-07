@@ -1,6 +1,6 @@
 {
-  "name": "Onyx Training",
-  "short_name": "Onyx",
+  "name": "Forge Training",
+  "short_name": "Forge",
   "description": "Strength and cardio workouts for the road. Private, on your device.",
   "start_url": "./",
   "scope": "./",

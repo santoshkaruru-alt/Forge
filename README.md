@@ -1,6 +1,6 @@
-# Onyx: your studio week, anywhere
+# Forge: your studio week, anywhere
 
-Onyx gives you a Barry's-style week of strength and cardio, at home or on the
+Forge gives you a Barry's-style week of strength and cardio, at home or on the
 road. Every day has a **body-part focus** (Arms, Shoulders & Abs; Legs & Abs;
 Chest, Back & Abs; Abs & Butt; Full Body with a lower or upper focus), and you
 choose the room:
@@ -99,7 +99,7 @@ It is a static site with no build step.
 
 ```bash
 npm start          # from the repository root, then open http://localhost:8080/fit/
-npm test           # includes the Onyx program and unit tests
+npm test           # includes the Forge program and unit tests
 ```
 
 ### Put it on your phone

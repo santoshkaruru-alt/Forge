@@ -2,7 +2,8 @@
 import { DEFAULT_WEEK, DEFAULT_FOCUS_WEEK, mondayOf, toISO } from './program.js';
 import { LOCATIONS } from './exercises.js';
 
-export const KEY = 'onyx.v1';
+export const KEY = 'forge.v1';
+const OLD_KEYS = ['onyx.v1']; // the app was called Onyx before
 
 const usesPounds = () => {
   const lang = (typeof navigator !== 'undefined' && navigator.language) || 'en-US';
@@ -96,7 +97,16 @@ function merge(raw) {
 
 function load() {
   try {
-    const raw = localStorage.getItem(KEY);
+    let raw = localStorage.getItem(KEY);
+    if (!raw) {
+      // Carry data over from the app's old name, then tidy up.
+      const old = OLD_KEYS.find((k) => localStorage.getItem(k));
+      if (old) {
+        raw = localStorage.getItem(old);
+        localStorage.setItem(KEY, raw);
+        localStorage.removeItem(old);
+      }
+    }
     return raw ? merge(JSON.parse(raw)) : DEFAULTS();
   } catch {
     return DEFAULTS();
@@ -117,10 +127,10 @@ export const store = {
   update(fn) { fn(state); save(); },
   /** Save without notifying (used while typing reps so inputs keep focus). */
   quietSave() { try { localStorage.setItem(KEY, JSON.stringify(state)); } catch {} },
-  exportJSON() { return JSON.stringify({ app: 'onyx', exportedAt: new Date().toISOString(), ...state }, null, 2); },
+  exportJSON() { return JSON.stringify({ app: 'forge', exportedAt: new Date().toISOString(), ...state }, null, 2); },
   importJSON(text) {
     const parsed = JSON.parse(text);
-    if (!parsed || typeof parsed !== 'object' || !('settings' in parsed)) throw new Error('Not an Onyx backup');
+    if (!parsed || typeof parsed !== 'object' || !('settings' in parsed)) throw new Error('Not a Forge backup');
     state = merge(parsed);
     save();
   },

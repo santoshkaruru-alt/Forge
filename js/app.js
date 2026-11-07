@@ -433,7 +433,7 @@ function renderSettings() {
     <button class="set-row" data-action="import"><span><b>Restore from backup</b></span>${icon('upload', 18)}</button>
     <button class="set-row danger" data-action="erase"><span><b>Erase everything</b></span>${icon('trash', 18)}</button>
   </section>
-  <p class="footnote">Your data stays on this device. Add Onyx to your home screen and it works offline.</p>`;
+  <p class="footnote">Your data stays on this device. Add Forge to your home screen and it works offline.</p>`;
   return html;
 }
 
@@ -807,7 +807,7 @@ function classSheet() {
 
 function welcomeSheet() {
   openSheet(`<div class="welcome">
-    <div class="wordmark">ONYX</div>
+    <div class="wordmark">FORGE</div>
     <h2>Your studio week, anywhere</h2>
     <p class="muted">Every day has a body-part focus, like Arms & Shoulders or Legs, with abs built in. You pick the room:</p>
     <div class="rooms">
@@ -1019,7 +1019,7 @@ const actions = {
     const blob = new Blob([store.exportJSON()], { type: 'application/json' });
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
-    a.download = `onyx-backup-${todayISO()}.json`;
+    a.download = `forge-backup-${todayISO()}.json`;
     a.click();
     setTimeout(() => URL.revokeObjectURL(a.href), 1000);
   },

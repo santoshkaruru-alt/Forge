@@ -1,5 +1,5 @@
-// Onyx service worker: offline app shell. Scoped to this folder only.
-const VERSION = 'onyx-v3';
+// Forge service worker: offline app shell. Scoped to this folder only.
+const VERSION = 'forge-v1';
 const SHELL = [
   './',
   'index.html',
@@ -25,7 +25,7 @@ self.addEventListener('install', (event) => {
 
 self.addEventListener('activate', (event) => {
   event.waitUntil((async () => {
-    for (const k of await caches.keys()) if (k.startsWith('onyx-') && k !== VERSION) await caches.delete(k);
+    for (const k of await caches.keys()) if ((k.startsWith('forge-') || k.startsWith('onyx-')) && k !== VERSION) await caches.delete(k);
     await self.clients.claim();
   })());
 });
