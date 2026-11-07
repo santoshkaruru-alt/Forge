@@ -573,3 +573,4 @@ body.in-workout .tabbar { transform: translate(-50%, 140%); opacity: 0; pointer-
 .swap-day i { position: absolute; top: 9px; right: 9px; color: var(--c); }
 .swap-day.t-rest i { color: var(--text-3); }
 .swap-day:active { transform: scale(.97); }
+.chip.dim { opacity: .38; }

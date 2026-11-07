@@ -68,6 +68,14 @@ const T = {
     const slow = v === 'tempo' ? 2600 : 1200;
     return { props, frames: [[P({ feet, hands, elbow }), slow, 300], [P({ hip: [84, 116], torso: 148, feet, hands, elbow }), 900, 200]] };
   },
+  sumo() {
+    const feet = [[70, 146], [130, 146]];
+    const elbow = [[-0.3, 1], [0.3, 1]];
+    return {
+      view: 'front', props: [{ t: 'db', at: 'hc' }],
+      frames: [[F({ hip: [100, 90], feet, hands: [[97, 114], [103, 114]], elbow }), 1200, 250], [F({ hip: [100, 112], feet, hands: [[97, 136], [103, 136]], elbow }), 900, 200]],
+    };
+  },
   jumpsquat() {
     const feet = [[104, 146], [98, 146]];
     const stand = P({ feet, hands: HANG });
@@ -167,7 +175,7 @@ const T = {
   },
   bridge(v) {
     const far = v === 'sl' ? [114, 100] : [122, 146];
-    const props = v === 'band' ? [{ t: 'ring', at: 'k1' }] : [];
+    const props = v === 'band' ? [{ t: 'ring', at: 'k1' }] : v === 'db' ? [{ t: 'db', at: 'hip', off: [0, -9] }] : [];
     const base = { head: -95, hands: [[100, 146], [98, 146]], elbow: both([0, 1]), knee: both([0, -1]) };
     return {
       props,
@@ -216,6 +224,9 @@ const T = {
   },
   floorpress(v) {
     const base = { hip: [118, 140], torso: -90, head: -90, feet: [[140, 146], [136, 146]], knee: both([0, -1]), elbow: both([0, 1]) };
+    if (v === 'pullover') {
+      return { props: [{ t: 'db', at: 'hc' }], frames: [[P({ ...base, hands: [[78, 92], [76, 92]] }), 1400, 150], [P({ ...base, hands: [[26, 136], [24, 136]], elbow: both([0, -1]) }), 1100, 200]] };
+    }
     if (v === 'skull') {
       return { props: [{ t: 'db', at: 'h1' }, { t: 'db', at: 'h2', far: 1 }], frames: [[P({ ...base, hands: [[78, 92], [76, 92]] }), 1200, 150], [P({ ...base, hands: [[58, 118], [56, 118]], elbow: both([0.3, -1]) }), 900, 150]] };
     }
@@ -358,6 +369,18 @@ const T = {
       frames: [[P({ ...base, hands: [S(2, 44), S(0, 44)] }), 1000, 150], [P({ ...base, hands: [S(-34, 14), S(-36, 14)], elbow: both([0, 1]) }), 900, 250]],
     };
   },
+  uprow() {
+    const feet = [[104, 146], [98, 146]];
+    return { props: [{ t: 'db', at: 'h1' }, { t: 'db', at: 'h2', far: 1 }], frames: [[P({ feet, hands: [S(6, 44), S(4, 44)] }), 900, 150], [P({ feet, hands: [S(10, 8), S(8, 8)], elbow: both([-0.2, -1]) }), 900, 250]] };
+  },
+  frontraise() {
+    const feet = [[104, 146], [98, 146]];
+    return { props: [{ t: 'db', at: 'h1' }, { t: 'db', at: 'h2', far: 1 }], frames: [[P({ feet, hands: [S(6, 46), S(4, 46)] }), 1000, 150], [P({ feet, hands: [S(47, 0), S(45, 0)], elbow: both([0, 1]) }), 1000, 250]] };
+  },
+  crunch() {
+    const base = { hip: [100, 140], feet: [[126, 146], [122, 146]], knee: both([0, -1]), hands: [S(10, -8), S(8, -8)], elbow: both([1, 1]) };
+    return { props: [{ t: 'db', at: 'hc' }], frames: [[P({ ...base, torso: -88, head: -92 }), 900, 150], [P({ ...base, torso: -125, head: -135 }), 800, 250]] };
+  },
   facepull() {
     const feet = [[110, 146], [92, 146]];
     return {
@@ -469,10 +492,10 @@ const T = {
       frames: [[P({ hip: [100, 98], feet: [[100, 156], [98, 156]], toe: [20, 20], hands }), 1000, 150], [P({ hip: [98, 96], torso: 186, feet: [[126, 98], [124, 98]], knee: both([1, -0.3]), toe: [60, 60], hands }), 800, 250]],
     };
   },
-  woodchop() {
+  woodchop(v) {
     const feet = [[76, 146], [124, 146]];
     return {
-      view: 'front', props: [{ t: 'cable', from: 'hc', to: [192, 14] }],
+      view: 'front', props: [v === 'db' ? { t: 'db', at: 'hc' } : { t: 'cable', from: 'hc', to: [192, 14] }],
       frames: [[F({ hip: [100, 86], torso: 172, feet, hands: [[146, 36], [142, 40]], elbow: [[0, 1], [0, 1]] }), 900, 150], [F({ hip: [96, 96], torso: 194, feet, hands: [[60, 122], [64, 124]], elbow: [[0, 1], [0, 1]] }), 800, 250]],
     };
   },
@@ -623,7 +646,8 @@ const EX = {
   'bench-dip': ['dip'], 'diamond-push-up': ['pushup'], 'band-pushdown': ['pushdown', 'band'], plank: ['plank'], 'side-plank': ['sideplank'],
   'dead-bug': ['deadbug'], 'hollow-hold': ['hollow'], bicycle: ['bicycle'], 'v-up': ['vup'], flutter: ['flutter'],
   'mountain-climber': ['climber'], 'russian-twist': ['twist'], 'hanging-knee': ['hangknee'], woodchop: ['woodchop'], pallof: ['pallof'],
-  'bird-dog': ['birddog'], 'db-thruster': ['thruster'], 'db-snatch': ['snatch'], 'man-maker': ['burpee', 'manmaker'],
+  'bird-dog': ['birddog'], 'db-sumo-squat': ['sumo'], 'db-glute-bridge': ['bridge', 'db'], 'db-floor-pullover': ['floorpress', 'pullover'],
+  'db-front-raise': ['frontraise'], 'db-upright-row': ['uprow'], 'db-woodchop': ['woodchop', 'db'], 'db-crunch': ['crunch'], 'db-thruster': ['thruster'], 'db-snatch': ['snatch'], 'man-maker': ['burpee', 'manmaker'],
   'kb-clean-press': ['cleanpress'], burpee: ['burpee'], 'squat-thrust': ['burpee', 'thrust'], 'db-squat-press': ['thruster', 'squatpress'],
 };
 

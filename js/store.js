@@ -10,7 +10,7 @@ const usesPounds = () => {
 };
 
 export const DEFAULTS = () => ({
-  version: 3,
+  version: 4,
   settings: {
     unit: usesPounds() ? 'lb' : 'kg',
     theme: 'auto',
@@ -23,6 +23,7 @@ export const DEFAULTS = () => ({
     sound: true,
     restMain: 120,
     restAcc: 60,
+    dbOnly: true, // dumbbells and bodyweight only, like the studio floor
     goal: DEFAULT_WEEK.filter((t) => t !== 'rest').length, // sessions a week
     programStart: mondayOf(toISO(new Date())), // week 1 of the current 4-week cycle
     onboarded: false,
@@ -67,6 +68,10 @@ export function migrate(parsed) {
     for (const [d, v] of Object.entries(out.days || {})) days[d] = v.focus ? { ...v, focus: fullV3(v.focus) } : v;
     const sessions = (out.sessions || []).map((x) => (x.focus === 'full' ? { ...x, focus: 'fullLower' } : x));
     out = { ...out, version: 3, settings: s, plan, focusWeek: [...DEFAULT_FOCUS_WEEK], days, sessions };
+  }
+  if (out.version < 4) {
+    // Studio style: dumbbells and bodyweight only, on by default.
+    out = { ...out, version: 4, settings: { ...(out.settings || {}), dbOnly: true } };
   }
   return out;
 }

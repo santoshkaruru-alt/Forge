@@ -39,6 +39,7 @@ x('back-squat', 'Back Squat', 'squat', ['barbell'], 'w', { main: true, cue: 'Bra
 x('leg-press', 'Leg Press', 'squat', ['machine'], 'w', { main: true, cue: 'Feet shoulder width, lower until hips start to tuck.' });
 x('goblet-squat', 'Goblet Squat', 'squat', ['db'], 'w', { main: true, cue: 'Elbows inside knees, chest tall, pause at the bottom.' });
 x('db-front-squat', 'Dumbbell Front Squat', 'squat', ['db'], 'w', { main: true, cue: 'Bells on shoulders, elbows high, knees track toes.' });
+x('db-sumo-squat', 'Dumbbell Sumo Squat', 'squat', ['db'], 'w', { main: true, cue: 'Wide stance, toes out, one bell hanging between your legs.' });
 x('kb-goblet-squat', 'Kettlebell Goblet Squat', 'squat', ['kb'], 'w', { main: true, cue: 'Hold the horns, sit deep, stand tall.' });
 x('tempo-squat', 'Tempo Air Squat', 'squat', [], 'bw', { main: true, base: 15, cue: '3 seconds down, 1 second pause, stand fast.' });
 x('band-squat', 'Banded Squat', 'squat', ['band'], 'bw', { main: true, base: 15, cue: 'Stand on the band, handles at shoulders.' });
@@ -71,6 +72,7 @@ x('nordic-neg', 'Nordic Curl Negative', 'ham', [], 'bw', { base: 5, cue: 'Anchor
 // Glutes
 x('bb-hip-thrust', 'Barbell Hip Thrust', 'glute', ['barbell', 'bench'], 'w', { main: true, cue: 'Chin tucked, ribs down, pause at the top.' });
 x('db-hip-thrust', 'Dumbbell Hip Thrust', 'glute', ['db', 'bench'], 'w', { cue: 'Bell on hips, drive through heels, pause at the top.' });
+x('db-glute-bridge', 'Dumbbell Glute Bridge', 'glute', ['db'], 'w', { cue: 'Bell on your hips, drive through the heels, squeeze at the top.' });
 x('cable-kickback', 'Cable Kickback', 'glute', ['machine'], 'w', { uni: true, cue: 'Kick back and slightly out, no low-back arch.' });
 x('sl-bridge', 'Single-leg Glute Bridge', 'glute', [], 'bw', { uni: true, base: 12, cue: 'Other knee to chest, squeeze hard at the top.' });
 x('band-bridge', 'Banded Glute Bridge', 'glute', ['band'], 'bw', { base: 20, cue: 'Band above knees, push knees out.' });
@@ -119,12 +121,15 @@ x('pull-up', 'Pull-up', 'pull_v', ['bar'], 'bw', { main: true, base: 6, cue: 'De
 x('chin-up', 'Chin-up', 'pull_v', ['bar'], 'bw', { main: true, base: 6, cue: 'Palms facing you, chest to the bar.' });
 x('lat-pulldown', 'Lat Pulldown', 'pull_v', ['machine'], 'w', { main: true, cue: 'Pull to the collarbone, elbows to the pockets.' });
 x('db-pullover', 'Dumbbell Pullover', 'pull_v', ['db', 'bench'], 'w', { cue: 'Long arms, stretch the lats, pull back over the chest.' });
+x('db-floor-pullover', 'Floor Pullover', 'pull_v', ['db'], 'w', { cue: 'Lie on the floor, long arms, lower the bell behind your head and pull it back.' });
 x('band-pulldown', 'Banded Lat Pulldown', 'pull_v', ['band'], 'bw', { base: 15, cue: 'Band overhead, pull elbows down to ribs.' });
 x('prone-pulldown', 'Floor Lat Pulldown', 'pull_v', [], 'bw', { base: 12, cue: 'Face down, arms overhead, pull elbows to ribs, squeeze.' });
 
 // Shoulders
 x('lateral-raise', 'Lateral Raise', 'shoulder', ['db'], 'w', { cue: 'Lead with the elbows, stop at shoulder height.' });
 x('rear-delt-fly', 'Rear-delt Fly', 'shoulder', ['db'], 'w', { cue: 'Hinge over, sweep the arms wide, pinkies up.' });
+x('db-front-raise', 'Front Raise', 'shoulder', ['db'], 'w', { cue: 'Straight arms up to shoulder height, no swinging.' });
+x('db-upright-row', 'Dumbbell Upright Row', 'shoulder', ['db'], 'w', { cue: 'Pull the bells up to your chest, elbows lead and finish high.' });
 x('cable-lateral', 'Cable Lateral Raise', 'shoulder', ['machine'], 'w', { uni: true, cue: 'Cable behind you, smooth arc.' });
 x('face-pull', 'Face Pull', 'shoulder', ['machine'], 'w', { cue: 'Rope to the eyes, thumbs back.' });
 x('band-pull-apart', 'Band Pull-apart', 'shoulder', ['band'], 'bw', { base: 20, cue: 'Straight arms, pull the band to the chest.' });
@@ -158,6 +163,8 @@ x('flutter', 'Flutter Kicks', 'core', [], 't', { base: 30, cue: 'Low back down, 
 x('mountain-climber', 'Mountain Climber', 'core', [], 't', { base: 30, cue: 'Hips level, knees drive fast.' });
 x('russian-twist', 'Dumbbell Russian Twist', 'core', ['db'], 'w', { uni: true, cue: 'Lean back, rotate from the ribs.' });
 x('hanging-knee', 'Hanging Knee Raise', 'core', ['bar'], 'bw', { base: 10, cue: 'No swing, curl the pelvis up.' });
+x('db-woodchop', 'Dumbbell Woodchop', 'core', ['db'], 'w', { uni: true, cue: 'Bell high over one shoulder, chop down across to the opposite knee.' });
+x('db-crunch', 'Weighted Crunch', 'core', ['db'], 'w', { cue: 'Bell on your chest, curl your shoulders off the floor, lower slowly.' });
 x('woodchop', 'Cable Woodchop', 'core', ['machine'], 'w', { uni: true, cue: 'Rotate through the torso, arms long.' });
 x('pallof', 'Pallof Press', 'core', ['band'], 'bw', { uni: true, base: 10, cue: 'Press out and resist the rotation.' });
 x('bird-dog', 'Bird Dog', 'core', [], 'bw', { uni: true, base: 10, cue: 'Reach long, hips square, pause.' });

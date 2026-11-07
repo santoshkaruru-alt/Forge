@@ -2,7 +2,7 @@ import { store, uid } from './store.js';
 import { icon } from './icons.js';
 import { EX_BY_ID, LOCATIONS, EQUIPMENT, CARDIO } from './exercises.js';
 import {
-  TYPES, ROOM_IDS, FOCI, FOCUS_IDS, PHASES, DEFAULT_WEEK, DEFAULT_FOCUS_WEEK, buildSession, cycleInfo, typeFor, focusFor,
+  TYPES, ROOM_IDS, FOCI, FOCUS_IDS, PHASES, STUDIO_KIT, kitFor, DEFAULT_WEEK, DEFAULT_FOCUS_WEEK, buildSession, cycleInfo, typeFor, focusFor,
   toISO, parseISO, addDays, mondayOf, weekday, blockSeconds, alternatives, suggestLoad, lastPerformance,
   sessionVolume, personalBests, newBests,
 } from './program.js';
@@ -218,7 +218,7 @@ function renderToday() {
   html += `<section class="card">
     <div class="card-head"><h2>Training at</h2><button class="text-btn" data-action="goto" data-tab="settings">Edit equipment</button></div>
     ${locGrid()}
-    <p class="muted small">${esc(loc ? loc.sub : 'Your own equipment mix')}. Workouts adapt automatically.</p>
+    <p class="muted small">${S().dbOnly ? `${S().equipment.includes('db') ? 'Dumbbells' : 'No dumbbells here, so bodyweight'}${S().dbOnly && S().equipment.includes('db') ? ' and bodyweight' : ''} only, like the studio floor` : esc(loc ? loc.sub : 'Your own equipment mix')}. Workouts adapt automatically.</p>
   </section>`;
 
   if (!isRest && !done.length) html += `<button class="row-link" data-action="log-class">${icon('ticket', 18)}<span><b>Took a class at the studio?</b><small>Log it and it counts toward your week</small></span>${icon('chevR', 16)}</button>`;
@@ -407,8 +407,9 @@ function renderSettings() {
 
   html += `<h3 class="section-title">Where you train</h3>
   <section class="card list">
+    <div class="set-row"><span><b>Dumbbells & bodyweight only</b><small>Like the studio floor. Turn off to also use barbells, machines, kettlebells, bands or a pull-up bar.</small></span>${toggle('dbOnly', s.dbOnly)}</div>
     ${LOCATIONS.map((l) => `<button class="set-row radio ${s.location === l.id ? 'on' : ''}" data-action="set-location" data-v="${l.id}"><span><b>${esc(l.name)}</b><small>${esc(l.sub)}</small></span><i class="dot"></i></button>`).join('')}
-    <div class="set-col"><b>Equipment</b><div class="chips wrap">${EQUIPMENT.map((e) => `<button class="chip ${s.equipment.includes(e.id) ? 'on' : ''}" data-action="equip" data-v="${e.id}">${esc(e.name)}</button>`).join('')}</div></div>
+    <div class="set-col"><b>Equipment here</b>${s.dbOnly ? '<small class="muted">Greyed-out items are skipped while dumbbells & bodyweight only is on.</small>' : ''}<div class="chips wrap">${EQUIPMENT.map((e) => `<button class="chip ${s.equipment.includes(e.id) ? 'on' : ''} ${s.dbOnly && !STUDIO_KIT.includes(e.id) ? 'dim' : ''}" data-action="equip" data-v="${e.id}">${esc(e.name)}</button>`).join('')}</div></div>
     <div class="set-col"><b>Cardio</b><small class="muted">Used for Red Room intervals</small><div class="chips wrap">${CARDIO.map((c) => `<button class="chip ${s.cardio === c.id ? 'on' : ''}" data-action="cardio" data-v="${c.id}">${esc(c.name)}</button>`).join('')}</div></div>
   </section>`;
 
@@ -767,8 +768,8 @@ function swapSheet(bid, i) {
   const a = st().active;
   const b = a.plan.blocks.find((x) => x.id === bid);
   const it = b.items[i];
-  const alts = alternatives(it, b, a.plan.focus, a.plan.type, S().equipment);
-  openSheet(`<h2>Swap exercise</h2><p class="muted small">Same kind of movement, with the equipment you have. Your pick is remembered.</p>
+  const alts = alternatives(it, b, a.plan.focus, a.plan.type, kitFor(S()));
+  openSheet(`<h2>Swap exercise</h2><p class="muted small">Same kind of movement, ${S().dbOnly ? 'dumbbells or bodyweight only' : 'with the equipment you have'}. Your pick is remembered.</p>
     <div class="list">${alts.map((e) => `<button class="set-row radio with-anim ${e.id === it.exId ? 'on' : ''}" data-action="do-swap" data-b="${bid}" data-i="${i}" data-v="${e.id}">${hasAnim(e.id) ? `<span class="swap-anim" data-anim="${e.id}"></span>` : ''}<span><b>${esc(e.name)}</b><small>${esc(e.cue || '')}</small></span><i class="dot"></i></button>`).join('')}</div>`);
 }
 

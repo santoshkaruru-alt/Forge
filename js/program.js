@@ -102,6 +102,15 @@ function shuffle(list, r) {
 
 /* ------------------------------------------------------------------ picking */
 
+/** Studio floor kit: dumbbells and a bench. Bodyweight moves need nothing. */
+export const STUDIO_KIT = ['db', 'bench'];
+
+/** The equipment a session may use: everything on hand, or just dumbbells and bodyweight. */
+export function kitFor(settings) {
+  const eq = settings.equipment || [];
+  return settings.dbOnly ? eq.filter((e) => STUDIO_KIT.includes(e)) : eq;
+}
+
 /** Every move that fits a slot's patterns with the kit on hand. */
 export function candidatesFor(patterns, equipment) {
   return EXERCISES.filter((e) => patterns.includes(e.pattern) && isAvailable(e, equipment));
@@ -120,7 +129,8 @@ function chooseExercise(patterns, { equipment, used, r, main, preferred }) {
     if (loaded.length) list = loaded;
   }
   const hasLoaded = list.some((e) => e.load === 'w');
-  const weights = list.map((e) => (e.pattern === patterns[0] ? 2 : 1) * (hasLoaded && e.load === 'w' ? 5 : 1));
+  // Prefer loaded moves when weights are around, except for core where variety matters more.
+  const weights = list.map((e) => (e.pattern === patterns[0] ? 2 : 1) * (hasLoaded && e.load === 'w' && e.pattern !== 'core' ? 5 : 1));
   return weightedPick(list, weights, r);
 }
 
@@ -148,7 +158,7 @@ function makeItem(ex, role, phase, settings, short = false) {
 /* ------------------------------------------------------------------ lift */
 
 const LIFT_SLOTS = {
-  arms: { m1: ['push_v'], m2: ['pull_v', 'pull_h'], a1: ['bi'], a2: ['tri'], a3: ['shoulder'], a4: ['shoulder', 'push_v'], a5: ['bi', 'tri'], c1: ['core'] },
+  arms: { m1: ['push_v'], m2: ['bi'], a1: ['tri'], a2: ['shoulder'], a3: ['bi', 'tri'], a4: ['shoulder', 'push_v'], a5: ['tri', 'bi'], c1: ['core'] },
   legs: { m1: ['squat'], m2: ['hinge'], a1: ['lunge'], a2: ['ham', 'hinge'], a3: ['glute'], a4: ['quad', 'lunge'], a5: ['calf', 'glute'], c1: ['core'] },
   upper: { m1: ['push_h'], m2: ['pull_h', 'pull_v'], a1: ['pull_v', 'pull_h'], a2: ['push_h'], a3: ['pull_h', 'pull_v'], a4: ['core'], a5: ['push_h', 'push_v'], c1: ['core'] },
   core: { m1: ['glute', 'hinge'], m2: ['squat', 'lunge'], a1: ['core'], a2: ['glute'], a3: ['lunge', 'ham'], a4: ['core'], a5: ['glute', 'hinge'], c1: ['core'] },
@@ -173,7 +183,7 @@ const STRETCHES = ['Hamstring Stretch', 'Hip Flexor Stretch · left', 'Hip Flexo
 const MOBILITY = ['Cat-Cow', "World's Greatest Stretch · left", "World's Greatest Stretch · right", '90/90 Hip Switches', 'Thread the Needle', 'Deep Squat Hold', 'Pigeon · left', 'Pigeon · right', 'Thoracic Rotations', "Child's Pose"];
 
 const bucket = (minutes) => (minutes <= 35 ? 30 : minutes <= 50 ? 45 : 60);
-const equipKey = (s) => [...(s.equipment || [])].sort().join('+') || 'bw';
+const equipKey = (s) => [...kitFor(s)].sort().join('+') || 'bw';
 
 /** A deterministic session for a date. Main lifts stay put through the cycle
  *  (so you can add weight week to week); accessories rotate weekly. */
@@ -190,7 +200,7 @@ export function buildSession({ date, type, focus, settings, swaps = {}, salt = 0
 
 function liftBlocks(focus, settings, phase, mins, salt, swaps, week, date) {
   const slots = LIFT_SLOTS[focus];
-  const eq = settings.equipment || [];
+  const eq = kitFor(settings);
   const used = new Set();
   const blocks = [];
   blocks.push({ id: 'warmup', kind: 'timed', title: 'Warm-up', segments: WARMUPS[focus].slice(0, mins === 30 ? 4 : 5).map((label) => ({ label, sec: 40 })) });
@@ -315,7 +325,7 @@ function redBlocks(date, focus, settings, phase, mins, salt, swaps) {
   const used = new Set();
   const patterns = shuffle(FLOOR_PATTERNS[focus], r);
   // Floor work is dumbbells, a bench, bands and bodyweight; skip barbells and machines if there are dumbbells.
-  const all = settings.equipment || [];
+  const all = kitFor(settings);
   const floorKit = all.includes('db') || all.includes('kb') ? all.filter((e) => e !== 'barbell' && e !== 'machine') : all;
   const floor = (n) => {
     const items = [];

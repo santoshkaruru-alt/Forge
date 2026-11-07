@@ -49,6 +49,10 @@ Four tabs:
   change its focus once or every week, or **swap two days** (room and focus
   trade places for that week). Abs are built into every session (a core move
   in the last Lift block, and every Red Room floor circuit ends on core).
+- **Dumbbells & bodyweight only** (on by default), like the studio floor: every
+  exercise uses dumbbells, a bench or just your body (push-ups, planks, lunges).
+  Even at a full gym it skips barbells, machines, cables, kettlebells, bands and
+  pull-up bars. Turn it off in Settings → Where you train to use them.
 - **4-week cycles, all year**: Base (3 x 10), Build (4 x 8), Peak (4 x 6), then a
   lighter Deload week, and repeat. Main lifts stay the same through a cycle so
   you can add weight; accessories rotate weekly.
