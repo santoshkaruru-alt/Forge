@@ -98,15 +98,15 @@ for push, red for all out. The screen stays awake while you train.
 It is a static site with no build step.
 
 ```bash
-npm start          # from the repository root, then open http://localhost:8080/fit/
-npm test           # includes the Forge program and unit tests
+npm start          # then open http://localhost:8080/
+npm test           # program and unit tests (Node 18+)
 ```
 
 ### Put it on your phone
 
 Turn on GitHub Pages for this repository (Settings → Pages → Deploy from a
-branch, pick the branch with this code, `/ (root)`), then open
-`https://<your-user>.github.io/<repo>/fit/` on your phone.
+branch, `main`, `/ (root)`), then after a minute or two open
+**https://santoshkaruru-alt.github.io/forge/** on your phone.
 
 - **iPhone**: Safari → Share → **Add to Home Screen**.
 - **Android**: Chrome → menu → **Install app**.
@@ -114,17 +114,17 @@ branch, pick the branch with this code, `/ (root)`), then open
 ## Code
 
 ```
-fit/index.html        app shell
-fit/css/styles.css    design tokens (light + dark), Lift blue / Red red-orange
-fit/js/app.js         screens, workout mode, rest and interval timers
-fit/js/program.js     weekly plan, session builder, cycles, load suggestions (pure, unit-tested)
-fit/js/exercises.js   exercise library, equipment, locations
-fit/js/units.js       lb / kg and mph / km/h helpers (pure, unit-tested)
-fit/js/store.js       local-first storage, migration, backup / restore
-fit/js/timer.js       beeps, vibration, screen wake lock, countdown
-fit/js/anim.js        exercise animations: posable figure, keyframes, IK, props
-fit/sw.js             offline cache, scoped to fit/
-tests/fit-program.test.mjs
+index.html            app shell
+css/styles.css        design tokens (light + dark), Lift blue / Red red-orange
+js/app.js             screens, workout mode, rest and interval timers
+js/program.js         weekly plan, session builder, cycles, load suggestions (pure, unit-tested)
+js/exercises.js       exercise library, equipment, locations
+js/units.js           lb / kg and mph / km/h helpers (pure, unit-tested)
+js/store.js           local-first storage, migration, backup / restore
+js/timer.js           beeps, vibration, screen wake lock, countdown
+js/anim.js            exercise animations: posable figure, keyframes, IK, props
+sw.js                 offline cache
+tests/program.test.mjs
 ```
 
 Sessions are generated from the date, so a day always shows the same workout
