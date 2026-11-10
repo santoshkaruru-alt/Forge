@@ -106,7 +106,7 @@ npm test           # program and unit tests (Node 18+)
 
 Turn on GitHub Pages for this repository (Settings → Pages → Deploy from a
 branch, `main`, `/ (root)`), then after a minute or two open
-**https://santoshkaruru-alt.github.io/forge/** on your phone.
+**https://santoshkaruru-alt.github.io/Forge/** on your phone.
 
 - **iPhone**: Safari → Share → **Add to Home Screen**.
 - **Android**: Chrome → menu → **Install app**.
