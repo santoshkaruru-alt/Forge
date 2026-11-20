@@ -65,7 +65,7 @@ test('every session only uses equipment you have', () => {
 
 test('session length roughly matches the setting', () => {
   for (const l of LOCATIONS) {
-    for (const minutes of [30, 45, 60]) {
+    for (const minutes of [30, 50, 60]) {
       for (const type of ['lift', 'red']) {
         const s = buildSession({ date: '2026-11-25', type, focus: 'legs', settings: withLoc(l.id, { minutes }) });
         assert.ok(s.estMin >= minutes - 12 && s.estMin <= minutes + 12, `${l.id} ${type} ${minutes}: ${s.estMin} min`);
@@ -82,12 +82,13 @@ test('the same day always builds the same workout, shuffle changes it', () => {
   assert.ok(shuffled.some((x) => x !== strengthItems(a).map((i) => i.exId).join()));
 });
 
-test('main lifts stay the same across the trip, reps drop as weight climbs', () => {
+test('main lifts stay the same through the cycle; target reps drop as weight climbs', () => {
   const wk = (date) => buildSession({ date, type: 'lift', focus: 'upper', settings: withLoc('gym') });
-  const w1 = wk('2026-11-09'), w2 = wk('2026-11-16'), w3 = wk('2026-11-23');
+  const w1 = wk('2026-11-09'), w2 = wk('2026-11-16'), w3 = wk('2026-11-23'), w4 = wk('2026-11-30');
   const main = (s) => strengthItems(s).filter((i) => i.role === 'main');
   assert.deepEqual(main(w1).map((i) => i.exId), main(w3).map((i) => i.exId));
-  assert.deepEqual([w1, w2, w3].map((s) => `${main(s)[0].sets}x${main(s)[0].reps}`), ['3x10', '4x8', '4x6']);
+  assert.deepEqual([w1, w2, w3].map((s) => `${main(s)[0].work}s~${main(s)[0].reps}`), ['50s~10', '50s~8', '50s~6']);
+  assert.equal(main(w4)[0].work, 40, 'deload week is 40 seconds on');
   assert.ok(main(w1).every((i) => EX_BY_ID[i.exId].load === 'w'), 'gym main lifts are loaded');
 });
 
@@ -144,7 +145,7 @@ test('swap alternatives share the movement and fit the kit', () => {
 });
 
 test('a remembered swap is used next time', () => {
-  const s = buildSession({ date: '2026-11-09', type: 'lift', focus: 'upper', settings: base, swaps: { 'lift:upper:m1': 'push-up' } });
+  const s = buildSession({ date: '2026-11-09', type: 'lift', focus: 'upper', settings: base, swaps: { 'lift:upper:s00': 'push-up' } });
   assert.equal(strengthItems(s)[0].exId, 'push-up');
 });
 
@@ -225,7 +226,7 @@ test('data from the first version carries over', async () => {
   const { migrate } = await import('../js/store.js');
   const old = { settings: { tripStart: '2026-11-02', tripWeeks: 3, unit: 'kg' }, plan: ['lift', 'red', 'lift', 'red', 'lift', 'recovery', 'rest'], days: { '2026-11-05': { type: 'recovery', focus: 'lower' } }, sessions: [{ id: 'a' }] };
   const m = migrate(old);
-  assert.equal(m.version, 4);
+  assert.equal(m.version, 5);
   assert.equal(m.settings.dbOnly, true);
   assert.equal(m.settings.programStart, '2026-11-02');
   assert.equal(m.settings.tripWeeks, undefined);
@@ -366,4 +367,45 @@ test('swap choices respect dumbbells & bodyweight only', async () => {
     }
   }
   assert.deepEqual(kitFor({ equipment: ['barbell', 'db', 'bench', 'band'], dbOnly: false }), ['barbell', 'db', 'bench', 'band']);
+});
+
+test('floor work is timed stations: 50 on, 25 rest, 1-minute water break between rounds', async () => {
+  const { stationSeconds } = await import('../js/program.js');
+  const settings = { ...withLoc('hotel'), minutes: 50, stationRest: 25, water: 60, dbOnly: true };
+  const red = buildSession({ date: '2026-11-10', type: 'red', focus: 'legs', settings });
+  const floors = red.blocks.filter((b) => b.kind === 'strength');
+  assert.equal(floors.length, 2);
+  for (const b of floors) {
+    assert.equal(b.rounds, 2);
+    assert.equal(b.items.length, 4);
+    assert.equal(b.water, 60);
+    assert.equal(EX_BY_ID[b.items.at(-1).exId].pattern, 'core', 'each round ends on abs');
+    for (const it of b.items) { assert.equal(it.work, 50); assert.equal(it.rest, 25); assert.equal(it.sets, 2); }
+    // 2 rounds of 4 x 50 s, 3 rests of 25 s per round, one water break.
+    assert.equal(stationSeconds(b), 2 * (4 * 50 + 3 * 25) + 60);
+  }
+  const lift = buildSession({ date: '2026-11-09', type: 'lift', focus: 'arms', settings: { ...settings, finisher: false } });
+  const blocks = lift.blocks.filter((b) => b.kind === 'strength');
+  assert.deepEqual(blocks.map((b) => b.id), ['A', 'B', 'C', 'abs']);
+  assert.deepEqual(blocks.map((b) => b.rounds), [3, 3, 3, 1]);
+  assert.ok(blocks.slice(0, 3).every((b) => b.items.length === 3));
+  assert.ok(blocks[3].items.every((it) => EX_BY_ID[it.exId].pattern === 'core'));
+  assert.ok(lift.estMin >= 45 && lift.estMin <= 56, `lift ${lift.estMin}`);
+  assert.ok(red.estMin >= 45 && red.estMin <= 56, `red ${red.estMin}`);
+  // The finisher trims the last lift block to two rounds so the session still fits.
+  const withFin = buildSession({ date: '2026-11-09', type: 'lift', focus: 'arms', settings: { ...settings, finisher: true } });
+  assert.deepEqual(withFin.blocks.filter((b) => b.kind === 'strength').map((b) => b.rounds), [3, 3, 2, 1]);
+});
+
+test('rest and water break follow your settings', () => {
+  const s = buildSession({ date: '2026-11-10', type: 'red', focus: 'legs', settings: { ...withLoc('hotel'), stationRest: 30, water: 90 } });
+  const b = s.blocks.find((x) => x.id === 'floor1');
+  assert.ok(b.items.every((it) => it.rest === 30));
+  assert.equal(b.water, 90);
+});
+
+test('version 4 data moves to the 50-minute class length', async () => {
+  const { migrate } = await import('../js/store.js');
+  assert.equal(migrate({ version: 4, settings: { minutes: 45 } }).settings.minutes, 50);
+  assert.equal(migrate({ version: 4, settings: { minutes: 60 } }).settings.minutes, 60);
 });

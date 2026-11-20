@@ -1,12 +1,12 @@
 import { store, uid } from './store.js';
 import { icon } from './icons.js';
-import { EX_BY_ID, LOCATIONS, EQUIPMENT, CARDIO } from './exercises.js';
+import { EX_BY_ID, LOCATIONS, EQUIPMENT, CARDIO, primaryEquip } from './exercises.js';
 import {
   TYPES, ROOM_IDS, FOCI, FOCUS_IDS, PHASES, STUDIO_KIT, kitFor, DEFAULT_WEEK, DEFAULT_FOCUS_WEEK, buildSession, cycleInfo, typeFor, focusFor,
   toISO, parseISO, addDays, mondayOf, weekday, blockSeconds, alternatives, suggestLoad, lastPerformance,
   sessionVolume, personalBests, newBests,
 } from './program.js';
-import { toKg, fromKg, fmtWeight, fmtSpeed, speedUnit, toMph, fromMph, trimNum } from './units.js';
+import { toKg, fromKg, fmtWeight, fmtSpeed, speedUnit, toMph, fromMph, trimNum, loadStep } from './units.js';
 import { beep, unlockAudio, keepAwake, Countdown, setSound } from './timer.js';
 import { mountAnim, hasAnim, animForName, toggleAnim, setAnimSpeed } from './anim.js';
 
@@ -96,6 +96,7 @@ function setDay(s, date, type, focus) {
 
 function targetText(it) {
   const ex = EX_BY_ID[it.exId];
+  if (it.work) return ex.load === 't' ? `${it.work} s hold` : `${it.work} s · ~${it.reps} reps${ex.uni ? ', switch sides' : ''}`;
   const reps = ex.load === 't' ? `${it.reps} sec` : `${it.reps}${ex.uni ? ' each side' : ''}`;
   return `${it.sets} × ${reps}`;
 }
@@ -153,9 +154,9 @@ function weekStrip() {
 function previewList(plan) {
   return `<ul class="preview">${plan.blocks.map((b) => {
     if (b.kind === 'strength') {
-      return `<li class="pv ${b.style}"><span class="pv-tag">${esc(b.title.replace('Floor ', 'F'))}</span><div class="pv-items">${b.items.map((it) => {
+      return `<li class="pv ${b.style} ${b.id === 'abs' ? 'abs' : ''}"><span class="pv-tagwrap"><span class="pv-tag">${esc(b.tag || b.title)}</span>${b.rounds > 1 ? `<small class="num">×${b.rounds}</small>` : ''}</span><div class="pv-items">${b.items.map((it) => {
         const sug = suggestLoad(st().sessions, it, U(), plan.date);
-        return `<button class="pv-item" data-action="exercise" data-id="${it.exId}" aria-label="How to do ${esc(exName(it.exId))}"><span class="pv-name">${esc(exName(it.exId))}<i class="pv-play">${icon('play', 10)}</i></span><span class="pv-meta num">${targetText(it)}${sug ? ` · <b>${wt(sug.kg)} ${unitLabel()}</b>` : ''}</span></button>`;
+        return `<button class="pv-item" data-action="exercise" data-id="${it.exId}" aria-label="How to do ${esc(exName(it.exId))}"><span class="pv-name">${esc(exName(it.exId))}<i class="pv-play">${icon('play', 10)}</i></span><span class="pv-meta num">${it.work ? `${it.work} s` : targetText(it)}${sug ? ` · <b>${wt(sug.kg)} ${unitLabel()}</b>` : ''}</span></button>`;
       }).join('')}</div></li>`;
     }
     const cardio = b.kind === 'intervals' && b.id !== 'warmup';
@@ -399,9 +400,9 @@ function renderSettings() {
   html += `<h3 class="section-title">Program</h3>
   <section class="card list">
     <div class="set-row"><span><b>Weekly goal</b><small>Workouts per week</small></span>${stepper('goal', `${s.goal} a week`)}</div>
-    <div class="set-row"><span><b>Session length</b></span><div class="seg">${[30, 45, 60].map((m) => `<button data-action="minutes" data-v="${m}" class="${s.minutes === m ? 'on' : ''}">${m}m</button>`).join('')}</div></div>
+    <div class="set-row"><span><b>Session length</b></span><div class="seg">${[30, 50, 60].map((m) => `<button data-action="minutes" data-v="${m}" class="${s.minutes === m ? 'on' : ''}">${m}m</button>`).join('')}</div></div>
     <div class="set-col"><b>4-week cycle</b><small class="muted">You're in week ${cyc.programWeek}: ${esc(cyc.phase.name)}. Weights go up through weeks 1 to 3, then a lighter week.</small>
-      <div class="phases">${[1, 2, 3, 4].map((w) => `<div class="phase ${cyc.programWeek === w ? 'now' : ''}"><small>Week ${w}</small><b>${PHASES[w].name}</b><small class="num">${PHASES[w].mainSets} × ${PHASES[w].mainReps}</small></div>`).join('')}</div>
+      <div class="phases">${[1, 2, 3, 4].map((w) => `<div class="phase ${cyc.programWeek === w ? 'now' : ''}"><small>Week ${w}</small><b>${PHASES[w].name}</b><small class="num">${PHASES[w].work} s on</small></div>`).join('')}</div>
       <button class="btn sm" data-action="restart-cycle">Restart at week 1</button></div>
   </section>`;
 
@@ -422,8 +423,8 @@ function renderSettings() {
   html += `<h3 class="section-title">Workout</h3>
   <section class="card list">
     <div class="set-row"><span><b>Cardio finisher</b><small>Short intervals to end Lift Room days</small></span>${toggle('finisher', s.finisher)}</div>
-    <div class="set-row"><span><b>Rest, big lifts</b></span>${stepper('restMain', clock(s.restMain))}</div>
-    <div class="set-row"><span><b>Rest, other moves</b></span>${stepper('restAcc', clock(s.restAcc))}</div>
+    <div class="set-row"><span><b>Rest between moves</b><small>After each 50-second station</small></span>${stepper('stationRest', `${s.stationRest} s`)}</div>
+    <div class="set-row"><span><b>Water break</b><small>Between rounds</small></span>${stepper('water', clock(s.water))}</div>
     <div class="set-row"><span><b>Sounds</b><small>Timer beeps. Vibrates where supported.</small></span>${toggle('sound', s.sound)}</div>
   </section>`;
 
@@ -476,14 +477,14 @@ function setRow(b, i, it, k, ex, sug) {
   const reps = row.reps ?? it.reps;
   const key = logKey(b, i);
   return `<div class="set ${row.done ? 'done' : ''}">
-    <span class="set-n num">${k + 1}</span>
+    <span class="set-n num">${b.rounds ? `R${k + 1}` : k + 1}</span>
     ${ex.load === 'w' ? `<label class="inp"><input type="number" inputmode="decimal" step="any" min="0" placeholder="0" value="${wKg != null ? wt(wKg) : ''}" data-field="w" data-key="${key}" data-k="${k}" aria-label="Weight in ${unitLabel()}, ${b.style === 'circuit' ? 'round' : 'set'} ${k + 1}"><span>${unitLabel()}</span></label>` : `<span class="inp bw">${ex.load === 't' ? 'Hold' : 'Bodyweight'}</span>`}
     <label class="inp"><input type="number" inputmode="numeric" min="0" value="${reps}" data-field="reps" data-key="${key}" data-k="${k}" aria-label="${ex.load === 't' ? 'Seconds' : 'Reps'}, set ${k + 1}"><span>${ex.load === 't' ? 'sec' : 'reps'}</span></label>
     <button class="tick" data-action="tick" data-key="${key}" data-k="${k}" aria-pressed="${!!row.done}" aria-label="${b.style === 'circuit' ? 'Round' : 'Set'} ${k + 1} done">${icon('check', 20)}</button>
   </div>`;
 }
 
-const blockLabel = (b) => (b.kind === 'strength' && b.style !== 'circuit' ? `Block ${b.title}` : b.title);
+const blockLabel = (b) => b.title;
 
 function renderWorkout() {
   const a = st().active;
@@ -520,9 +521,12 @@ function renderWorkout() {
       </section>`;
       continue;
     }
-    const note = b.style === 'circuit' ? `${b.items[0].sets} rounds · go move to move, rest after the last` : b.style === 'superset' ? 'Superset · alternate the moves, rest after each pair' : 'Straight sets · rest between sets';
-    html += `<section class="card wk-block strength ${doneBlock ? 'complete' : ''} ${isCur ? 'current' : ''}" id="blk-${b.id}">
-      <div class="wk-bhead"><span class="wk-tag letter">${esc(b.title.replace('Floor ', 'F'))}</span><div class="grow"><b>${esc(blockLabel(b))}</b><small class="muted">${esc(note)}</small></div>${doneBlock ? `<span class="pill">${icon('check', 12)} Done</span>` : ''}</div>`;
+    const it0 = b.items[0];
+    const legacy = !b.rounds; // a workout started before timed stations
+    const note = legacy ? `${it0.sets} sets each` : `${b.items.length} moves × ${b.rounds} round${b.rounds > 1 ? 's' : ''} · ${it0.work} s on, ${it0.rest} s rest${b.rounds > 1 ? ` · ${clock(b.water)} water break between rounds` : ''}`;
+    html += `<section class="card wk-block strength ${doneBlock ? 'complete' : ''} ${isCur ? 'current' : ''} ${b.id === 'abs' ? 'abs' : ''}" id="blk-${b.id}">
+      <div class="wk-bhead"><span class="wk-tag letter">${esc(b.tag || b.title)}</span><div class="grow"><b>${esc(blockLabel(b))}</b><small class="muted num">${esc(note)}</small></div>${doneBlock ? `<span class="pill">${icon('check', 12)} Done</span>` : ''}</div>
+      ${legacy ? '' : `<div class="actions row"><button class="btn ${doneBlock ? '' : 'primary'}" data-action="run-timer" data-id="${b.id}">${icon('play', 16)} ${doneBlock ? 'Run again' : `Start ${b.id === 'abs' ? 'abs' : 'stations'}`}</button><small class="muted">Timer guides you and logs each move</small></div>`}`;
     b.items.forEach((it, i) => {
       const ex = EX_BY_ID[it.exId];
       const sug = suggestLoad(st().sessions.filter((x) => x.id !== a.id), it, U(), a.date);
@@ -537,7 +541,7 @@ function renderWorkout() {
         <div class="ex-head grow"><b>${esc(ex.name)}</b><small class="muted num">${targetText(it)}${ex.load === 'w' ? ` · ${rirText(it.rir)}` : ''}</small></div></div>
         ${hint}
         <div class="sets">${Array.from({ length: it.sets }, (_, k) => setRow(b, i, it, k, ex, sug)).join('')}</div>
-        <div class="ex-tools"><button class="text-btn sm" data-action="ex-info" data-b="${b.id}" data-i="${i}">${icon('info', 14)} How to</button><button class="text-btn sm" data-action="swap" data-b="${b.id}" data-i="${i}">${icon('swap', 14)} Swap</button><span class="faint small num">Rest ${clock(it.rest)}</span></div>
+        <div class="ex-tools"><button class="text-btn sm" data-action="ex-info" data-b="${b.id}" data-i="${i}">${icon('info', 14)} How to</button><button class="text-btn sm" data-action="swap" data-b="${b.id}" data-i="${i}">${icon('swap', 14)} Swap</button></div>
       </div>`;
     });
     html += `</section>`;
@@ -564,12 +568,10 @@ function itemByKey(key) {
   return { b, i: Number(idx), it: b.items[Number(idx)] };
 }
 
-/** What comes after this set: same move (straight sets) or the next move in the round. */
+/** What comes after this station: the next move, a water break, or the next block. */
 function nextAfter(b, i, k) {
-  if (b.style === 'straight') {
-    if (k + 1 < b.items[i].sets) return `${exName(b.items[i].exId)} · set ${k + 2}`;
-  } else if (i + 1 < b.items.length) return `${exName(b.items[i + 1].exId)} · set ${k + 1}`;
-  else if (k + 1 < b.items[0].sets) return `${exName(b.items[0].exId)} · round ${k + 2}`;
+  if (i + 1 < b.items.length) return `${exName(b.items[i + 1].exId)} · round ${k + 1}`;
+  if (k + 1 < b.rounds) return `${exName(b.items[0].exId)} · round ${k + 2}`;
   const blocks = st().active.plan.blocks;
   const nb = blocks[blocks.indexOf(b) + 1];
   return nb ? `${nb.kind === 'strength' ? exName(nb.items[0].exId) : nb.title}` : 'Finish';
@@ -588,15 +590,19 @@ function tick(key, k) {
     nowDone = row.done;
   });
   render();
-  if (nowDone && it.rest > 0) startRest(it.rest, nextAfter(b, i, k));
+  // Rest between moves; a water break after the last move of a round; nothing after the final one.
+  const lastInRound = i === b.items.length - 1;
+  const sec = !lastInRound ? it.rest : k + 1 < b.rounds ? b.water : 0;
+  if (nowDone && sec > 0) startRest(sec, nextAfter(b, i, k), lastInRound ? 'Water' : 'Rest');
   else if (nowDone) stopRest();
 }
 
 /* ------------------------------------------------------------------ rest timer */
 
-const rest = { cd: null, next: '' };
-function startRest(sec, next) {
+const rest = { cd: null, next: '', label: 'Rest' };
+function startRest(sec, next, label = 'Rest') {
   rest.next = next;
+  rest.label = label;
   rest.cd?.stop();
   rest.cd = new Countdown({
     onTick: (r) => paintRest(r),
@@ -609,7 +615,7 @@ function startRest(sec, next) {
   requestAnimationFrame(() => el.classList.add('show'));
 }
 function paintRest(r, go) {
-  $('#restbar').innerHTML = `<div class="rb-main"><span class="rb-k">${go ? 'Go!' : 'Rest'}</span><span class="rb-t num">${go ? icon('bolt', 24) : clock(r)}</span></div>
+  $('#restbar').innerHTML = `<div class="rb-main"><span class="rb-k">${go ? 'Go!' : esc(rest.label)}</span><span class="rb-t num">${go ? icon('bolt', 24) : clock(r)}</span></div>
     <div class="rb-next"><small>Up next</small><b>${esc(rest.next)}</b></div>
     <div class="rb-btns"><button data-action="rest-add" data-by="-15" aria-label="15 seconds less">−15</button><button data-action="rest-add" data-by="15" aria-label="15 seconds more">+15</button><button data-action="rest-skip" aria-label="Skip rest">Skip</button></div>`;
 }
@@ -618,11 +624,50 @@ function stopRest() { rest.cd?.stop(); rest.cd = null; hideRest(); }
 
 /* ------------------------------------------------------------------ interval timer */
 
-const tm = { block: null, idx: -1, cd: null };
+const tm = { block: null, idx: -1, cd: null, room: 'red', switched: false };
+
+/** Timed stations as timer segments: work, rest between moves, water break between rounds. */
+function stationSegs(b) {
+  const segs = [];
+  const n = b.items.length;
+  for (let r = 0; r < b.rounds; r += 1) {
+    b.items.forEach((it, i) => {
+      segs.push({ kind: 'work', sec: it.work, level: 'work', label: exName(it.exId), exId: it.exId, i, r });
+      if (i < n - 1) segs.push({ kind: 'rest', sec: it.rest, level: 'walk', label: 'Rest', next: b.items[i + 1].exId, i, r });
+      else if (r < b.rounds - 1) segs.push({ kind: 'water', sec: b.water, level: 'none', label: 'Water break', next: b.items[0].exId, i, r });
+    });
+  }
+  return segs;
+}
+
+/** The log row for one station and round, with the weight it would use if not set yet. */
+function stationRow(i, r) {
+  const a = st().active;
+  const b = tm.block;
+  const it = b.items[i];
+  const log = a.log[`${b.id}:${i}`] || [];
+  const row = log[r] || {};
+  const prev = log.slice(0, r).reverse().find((x) => x?.w);
+  const sug = EX_BY_ID[it.exId].load === 'w' ? suggestLoad(st().sessions.filter((x) => x.id !== a.id), it, U(), a.date) : null;
+  return { it, row, w: row.w ?? prev?.w ?? sug?.kg ?? null, reps: row.reps ?? it.reps };
+}
+
+/** Mark a station done with the weight and reps shown, so the timer logs as you go. */
+function logStation(seg) {
+  const { w, reps } = stationRow(seg.i, seg.r);
+  const key = `${tm.block.id}:${seg.i}`;
+  store.update((s) => {
+    const log = (s.active.log[key] = s.active.log[key] || []);
+    log[seg.r] = { ...(log[seg.r] || {}), w, reps, done: true };
+  });
+}
+
 function runTimer(blockId) {
   unlockAudio();
   stopRest();
-  tm.block = st().active.plan.blocks.find((x) => x.id === blockId);
+  const b = st().active.plan.blocks.find((x) => x.id === blockId);
+  tm.block = b.kind === 'strength' ? { ...b, segments: stationSegs(b) } : b;
+  tm.room = st().active.plan.type;
   tm.idx = -1;
   tm.cd?.stop();
   tm.cd = new Countdown({ onTick: paintTimer, onEnd: () => gotoSeg(tm.idx + 1) });
@@ -631,8 +676,15 @@ function runTimer(blockId) {
   tm.cd.start(5); // get ready
   paintTimer(5);
 }
-function currentSeg() { return tm.idx < 0 ? { label: 'Get ready', sec: 5, level: 'ready', effort: tm.block.segments[0] ? `First: ${segTitle(tm.block.segments[0])}` : '' } : tm.block.segments[tm.idx]; }
+function currentSeg() {
+  if (tm.idx >= 0) return tm.block.segments[tm.idx];
+  if (tm.block.kind === 'strength') return { kind: 'ready', label: 'Get ready', sec: 5, level: 'ready', next: tm.block.items[0].exId };
+  return { label: 'Get ready', sec: 5, level: 'ready', effort: tm.block.segments[0] ? `First: ${segTitle(tm.block.segments[0])}` : '' };
+}
 function gotoSeg(i) {
+  const cur = tm.idx >= 0 ? tm.block.segments[tm.idx] : null;
+  if (cur?.kind === 'work' && i > tm.idx) logStation(cur);
+  tm.switched = false;
   if (i >= tm.block.segments.length) {
     beep('done');
     const id = tm.block.id;
@@ -653,21 +705,50 @@ function paintTimer(r) {
   const left = r + segs.slice(tm.idx + 1).reduce((a, x) => a + x.sec, 0);
   const next = segs[tm.idx + 1];
   const pct = seg.sec ? (1 - r / seg.sec) * 100 : 0;
-  const label = seg.move ? seg.label : ({ walk: 'Easy', base: 'Steady', push: 'Push it', sprint: 'Everything you have' }[seg.level] || '');
-  const animName = animForName(segTitle(seg)) ? segTitle(seg) : '';
-  const keep = animName && tm.animName === animName ? $('#timer .tm-anim svg') : null;
-  tm.animName = animName;
-  $('#timer').className = `timer lvl-${seg.level || 'none'}`;
+  const station = tm.block.kind === 'strength';
+  let label = seg.move ? seg.label : ({ walk: 'Easy', base: 'Steady', push: 'Push it', sprint: 'Everything you have' }[seg.level] || '');
+  let name = segTitle(seg);
+  let detail = seg.mph ? seg.effort || '' : segDetail(seg);
+  let logPanel = '';
+  if (station) {
+    const n = tm.block.items.length;
+    if (seg.kind === 'work') {
+      const { it, w, reps } = stationRow(seg.i, seg.r);
+      const ex = EX_BY_ID[it.exId];
+      const half = ex.uni && r <= seg.sec / 2;
+      if (half && !tm.switched && tm.cd?.running) { tm.switched = true; beep('go'); }
+      label = half ? 'Switch sides' : `Round ${seg.r + 1} of ${tm.block.rounds} · Move ${seg.i + 1} of ${n}`;
+      detail = ex.load === 't' ? `Hold for ${seg.sec} seconds` : `${ex.load === 'w' ? (w != null ? `Use ${wt(w)} ${unitLabel()} · ` : 'Pick a weight · ') : ''}aim for about ${reps} reps${ex.uni && !half ? ' · switch sides halfway' : ''}`;
+    } else if (seg.kind === 'rest' || seg.kind === 'water' || seg.kind === 'ready') {
+      label = seg.kind === 'water' ? 'Water break · up next' : seg.kind === 'ready' ? 'Get ready · first up' : 'Rest · up next';
+      name = exName(seg.next);
+      detail = '';
+      if (seg.kind !== 'ready') {
+        const { it, w, reps } = stationRow(seg.i, seg.r);
+        const ex = EX_BY_ID[it.exId];
+        logPanel = `<div class="tm-log"><small>Logged: ${esc(ex.name)}</small><div class="tm-log-row">
+          ${ex.load === 'w' ? `<div class="tm-step"><button data-action="tm-adj" data-f="w" data-by="-1" aria-label="Less weight">−</button><span class="num">${w != null ? `${wt(w)} ${unitLabel()}` : '–'}</span><button data-action="tm-adj" data-f="w" data-by="1" aria-label="More weight">+</button></div>` : ''}
+          ${ex.load !== 't' ? `<div class="tm-step"><button data-action="tm-adj" data-f="reps" data-by="-1" aria-label="Fewer reps">−</button><span class="num">${reps} reps</span><button data-action="tm-adj" data-f="reps" data-by="1" aria-label="More reps">+</button></div>` : `<span class="num">${it.work} s hold</span>`}
+        </div></div>`;
+      }
+    }
+  }
+  const animKey = seg.exId || seg.next || (animForName(segTitle(seg)) ? `name:${segTitle(seg)}` : '');
+  const keep = animKey && tm.animKey === animKey ? $('#timer .tm-anim svg') : null;
+  tm.animKey = animKey;
+  const animAttr = animKey.startsWith('name:') ? `data-anim="1" data-anim-name="${esc(animKey.slice(5))}"` : `data-anim="${esc(animKey)}"`;
+  $('#timer').className = `timer lvl-${seg.level || 'none'} t-${tm.room}`;
   $('#timer').innerHTML = `<div class="tm-inner">
     <div class="tm-top"><button class="icon-btn glass" data-action="timer-close" aria-label="Close timer">${icon('x', 20)}</button>
       <div class="tm-meta"><b>${esc(tm.block.title)}</b><small class="num">${tm.idx < 0 ? 'Starting' : `${tm.idx + 1} of ${segs.length}`} · ${clock(left)} left</small></div><span style="width:44px"></span></div>
     <div class="tm-center">
-      ${animName ? `<div class="tm-anim" ${keep ? '' : `data-anim="1" data-anim-name="${esc(animName)}"`}></div>` : ''}
+      ${animKey ? `<div class="tm-anim" ${keep ? '' : animAttr}></div>` : ''}
       <div class="tm-label">${esc(label)}</div>
-      <div class="tm-name">${esc(segTitle(seg))}</div>
+      <div class="tm-name">${esc(name)}</div>
       <div class="tm-clock num">${clock(r)}</div>
       ${seg.mph ? `<div class="tm-big num"><span>${fmtSpeed(seg.mph, U())}<small>${speedUnit(U())}</small></span><span>${seg.incline}<small>% incline</small></span></div>` : ''}
-      <div class="tm-detail">${esc(seg.mph ? seg.effort || '' : segDetail(seg))}</div>
+      <div class="tm-detail">${esc(detail)}</div>
+      ${logPanel}
     </div>
     <div class="tm-bar"><i style="width:${pct.toFixed(1)}%"></i></div>
     <div class="tm-next">${next ? `<small>Next</small> <b>${esc(segTitle(next))}</b> <span class="num">${clock(next.sec)}${next.mph ? ` · ${fmtSpeed(next.mph, U())} ${speedUnit(U())} · ${next.incline}%` : ''}</span>` : '<small>Last one. Finish strong.</small>'}</div>
@@ -912,7 +993,28 @@ const actions = {
   'block-done': (el) => { store.update((s) => { const d = s.active.blocksDone; if (d[el.dataset.id]) delete d[el.dataset.id]; else d[el.dataset.id] = true; }); render(); },
   collapse: (el) => { ui.collapsed[el.dataset.id] = el.dataset.open === '1'; render(); },
   'run-timer': (el) => runTimer(el.dataset.id),
-  'timer-close': () => closeTimer(),
+  'timer-close': () => { closeTimer(); render(); },
+  'tm-adj': (el) => {
+    const seg = currentSeg();
+    if (seg.i == null) return;
+    const { it, w, reps } = stationRow(seg.i, seg.r);
+    const ex = EX_BY_ID[it.exId];
+    const by = Number(el.dataset.by);
+    const key = `${tm.block.id}:${seg.i}`;
+    store.update((s) => {
+      const log = (s.active.log[key] = s.active.log[key] || []);
+      const row = (log[seg.r] = { ...(log[seg.r] || {}), done: true });
+      if (el.dataset.f === 'w') {
+        const step = loadStep(U(), primaryEquip(ex));
+        row.w = toKg(Math.max(0, Math.round(fromKg(w || 0, U()) / step) * step + by * step), U());
+        row.reps = row.reps ?? reps;
+      } else {
+        row.reps = Math.max(0, reps + by);
+        row.w = row.w ?? w;
+      }
+    });
+    paintTimer(tm.cd.remaining());
+  },
   'timer-pause': () => { if (tm.cd.running) tm.cd.pause(); else tm.cd.resume(); paintTimer(tm.cd.remaining()); },
   'timer-next': () => gotoSeg(tm.idx + 1),
   'timer-prev': () => { if (tm.idx > 0) gotoSeg(tm.idx - 1); else { tm.cd.stop(); tm.cd.start(currentSeg().sec); } },
@@ -940,7 +1042,7 @@ const actions = {
       const ph = PHASES[s.active.plan.programWeek];
       // Keep targets sensible when switching between weighted and bodyweight moves.
       if (ex.load === 'bw') it.reps = Math.max(3, Math.round((ex.base || 12) * ph.bwMul));
-      else if (ex.load === 't') it.reps = Math.max(5, Math.round(((ex.base || 30) * ph.bwMul) / 5) * 5);
+      else if (ex.load === 't') it.reps = it.work || Math.max(5, Math.round(((ex.base || 30) * ph.bwMul) / 5) * 5);
       else it.reps = it.role === 'main' ? ph.mainReps : it.role === 'floor' ? ph.floorReps : ph.accReps;
       delete s.active.log[`${bid}:${i}`];
       if (it.swapKey) s.swaps[it.swapKey] = v;
@@ -1000,8 +1102,8 @@ const actions = {
     const k = el.dataset.key;
     store.update((s) => {
       if (k === 'goal') s.settings.goal = Math.max(1, Math.min(7, s.settings.goal + by));
-      if (k === 'restMain') s.settings.restMain = Math.max(30, Math.min(300, s.settings.restMain + by * 15));
-      if (k === 'restAcc') s.settings.restAcc = Math.max(15, Math.min(180, s.settings.restAcc + by * 15));
+      if (k === 'stationRest') s.settings.stationRest = Math.max(10, Math.min(60, s.settings.stationRest + by * 5));
+      if (k === 'water') s.settings.water = Math.max(30, Math.min(180, s.settings.water + by * 15));
     });
     render();
   },

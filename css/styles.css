@@ -574,3 +574,17 @@ body.in-workout .tabbar { transform: translate(-50%, 140%); opacity: 0; pointer-
 .swap-day.t-rest i { color: var(--text-3); }
 .swap-day:active { transform: scale(.97); }
 .chip.dim { opacity: .38; }
+
+/* Timed stations */
+.pv-tagwrap { display: grid; justify-items: center; align-content: start; gap: 3px; flex: none; }
+.pv-tagwrap small { font-size: 11px; font-weight: 700; color: var(--text-3); }
+.pv.abs .pv-tag, .wk-block.abs .wk-tag.letter { background: linear-gradient(135deg, var(--rest-1), var(--rest-2)); font-size: 11px; }
+.wk-block.strength .actions.row small { font-size: 12px; }
+.timer.lvl-work { background: linear-gradient(160deg, var(--g1), var(--g2)); }
+.timer.lvl-ready { background: linear-gradient(160deg, #1b1c2b, #0b0b12); }
+.tm-log { margin-top: 14px; padding: 10px 12px; border-radius: 18px; background: rgba(255, 255, 255, 0.16); display: grid; gap: 8px; justify-items: center; }
+.tm-log small { font-size: 12px; opacity: .85; }
+.tm-log-row { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; }
+.tm-step { display: inline-flex; align-items: center; gap: 6px; background: rgba(0, 0, 0, 0.18); border-radius: 14px; padding: 4px; }
+.tm-step button { width: 36px; height: 36px; border-radius: 10px; background: rgba(255, 255, 255, 0.2); color: #fff; font-size: 20px; font-weight: 700; display: grid; place-items: center; }
+.tm-step span { min-width: 76px; text-align: center; font-weight: 800; font-size: 16px; }

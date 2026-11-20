@@ -4,8 +4,10 @@
 // Shoulders & Abs; Legs & Abs; Chest, Back & Abs...) shared by both rooms, and you pick the room:
 //   Lift Room - strength only, heavier weights, all on the floor
 //   Red Room  - treadmill intervals alternating with floor strength
-// Training runs in continuous 4-week cycles: Base (3x10) -> Build (4x8) ->
-// Peak (4x6) -> Deload, then repeats. It works the same at home or on the road.
+// Floor work runs like a studio class: timed stations of 50 seconds on and 25
+// seconds rest, a round of 3 to 5 moves, a 1-minute water break between rounds.
+// Training runs in continuous 4-week cycles: Base -> Build -> Peak (heavier each
+// week) -> Deload (lighter, 40 seconds on), then repeats.
 
 import { EXERCISES, EX_BY_ID, isAvailable, primaryEquip, BW_CARDIO } from './exercises.js';
 import { snapKg, toKg, loadStep } from './units.js';
@@ -35,11 +37,15 @@ export const DEFAULT_FOCUS_WEEK = ['arms', 'legs', 'upper', 'core', 'fullLower',
 export const DEFAULT_WEEK = ['lift', 'red', 'lift', 'red', 'lift', 'red', 'rest'];
 
 export const PHASES = {
-  1: { week: 1, name: 'Base', note: 'Groove the movements. Leave 2 reps in the tank.', mainSets: 3, mainReps: 10, accSets: 3, accReps: 12, rir: 2, bwMul: 1, floorReps: 12, speed: 0 },
-  2: { week: 2, name: 'Build', note: 'One more set on the big lifts, a little heavier.', mainSets: 4, mainReps: 8, accSets: 3, accReps: 10, rir: 2, bwMul: 1.15, floorReps: 12, speed: 0.2 },
-  3: { week: 3, name: 'Peak', note: 'Heaviest week. Leave just 1 rep in the tank on the big lifts.', mainSets: 4, mainReps: 6, accSets: 3, accReps: 8, rir: 1, bwMul: 1.3, floorReps: 10, speed: 0.4 },
-  4: { week: 4, name: 'Deload', note: 'Lighter week so your body catches up. Next cycle starts stronger.', mainSets: 2, mainReps: 8, accSets: 2, accReps: 12, rir: 3, bwMul: 0.8, floorReps: 12, speed: -0.3 },
+  1: { week: 1, name: 'Base', note: 'Pick a weight you can move for the full 50 seconds, with about 2 reps in the tank.', work: 50, mainReps: 10, accReps: 12, rir: 2, bwMul: 1, floorReps: 12, speed: 0 },
+  2: { week: 2, name: 'Build', note: 'Same timing, a little heavier on the big lifts.', work: 50, mainReps: 8, accReps: 10, rir: 2, bwMul: 1.15, floorReps: 12, speed: 0.2 },
+  3: { week: 3, name: 'Peak', note: 'Heaviest week. Fewer, stronger reps with tight form.', work: 50, mainReps: 6, accReps: 8, rir: 1, bwMul: 1.3, floorReps: 10, speed: 0.4 },
+  4: { week: 4, name: 'Deload', note: 'Lighter weights and 40 seconds on, so the next cycle starts stronger.', work: 40, mainReps: 10, accReps: 12, rir: 3, bwMul: 0.8, floorReps: 12, speed: -0.3 },
 };
+
+/** Station timing defaults: seconds of rest between moves, and the water break between rounds. */
+export const STATION_REST = 25;
+export const WATER_BREAK = 60;
 
 /* ------------------------------------------------------------------ dates */
 
@@ -134,41 +140,46 @@ function chooseExercise(patterns, { equipment, used, r, main, preferred }) {
   return weightedPick(list, weights, r);
 }
 
-const round5 = (n) => Math.max(5, Math.round(n / 5) * 5);
-
-function makeItem(ex, role, phase, settings, short = false) {
+/** One timed station: work for `work` seconds, aiming for about `reps` reps, `sets` rounds. */
+function station(ex, role, phase, settings, rounds, pats, key) {
   const main = role === 'main';
   const floor = role === 'floor';
   let reps = floor ? phase.floorReps : main ? phase.mainReps : phase.accReps;
   if (ex.load === 'bw') reps = Math.max(3, Math.round((ex.base || 12) * phase.bwMul));
-  if (ex.load === 't') reps = round5((ex.base || 30) * phase.bwMul);
-  const sets = main ? phase.mainSets : phase.accSets;
-  const rest = main ? settings.restMain : settings.restAcc;
-  return {
-    exId: ex.id,
-    role,
-    // Short sessions keep the quality but trim volume and rest.
-    sets: short ? Math.min(sets, 3) : sets,
-    reps,
-    rir: floor ? 3 : phase.rir,
-    rest: short ? Math.min(rest, main ? 90 : 45) : rest,
-  };
+  if (ex.load === 't') reps = phase.work; // hold for the whole station
+  return { exId: ex.id, role, sets: rounds, reps, rir: floor ? 3 : phase.rir, work: phase.work, rest: settings.stationRest ?? STATION_REST, pats, swapKey: key };
+}
+
+/** Build a block of stations, picking a move for each pattern list. */
+function stationBlock({ id, title, tag, rounds, list, role, phase, settings, used, kit, seed, swaps, keyBase }) {
+  const items = [];
+  list.forEach((pats, i) => {
+    const key = `${keyBase}${i}`;
+    const r = rng(`${seed(i)}`);
+    const ex = chooseExercise(pats, { equipment: kit, used, r, main: role(i) === 'main', preferred: swaps[key] });
+    if (!ex) return;
+    used.add(ex.id);
+    items.push(station(ex, role(i), phase, settings, rounds, pats, key));
+  });
+  return { id, kind: 'strength', style: 'circuit', title, tag, rounds, water: settings.water ?? WATER_BREAK, items };
 }
 
 /* ------------------------------------------------------------------ lift */
 
-const LIFT_SLOTS = {
-  arms: { m1: ['push_v'], m2: ['bi'], a1: ['tri'], a2: ['shoulder'], a3: ['bi', 'tri'], a4: ['shoulder', 'push_v'], a5: ['tri', 'bi'], c1: ['core'] },
-  legs: { m1: ['squat'], m2: ['hinge'], a1: ['lunge'], a2: ['ham', 'hinge'], a3: ['glute'], a4: ['quad', 'lunge'], a5: ['calf', 'glute'], c1: ['core'] },
-  upper: { m1: ['push_h'], m2: ['pull_h', 'pull_v'], a1: ['pull_v', 'pull_h'], a2: ['push_h'], a3: ['pull_h', 'pull_v'], a4: ['core'], a5: ['push_h', 'push_v'], c1: ['core'] },
-  core: { m1: ['glute', 'hinge'], m2: ['squat', 'lunge'], a1: ['core'], a2: ['glute'], a3: ['lunge', 'ham'], a4: ['core'], a5: ['glute', 'hinge'], c1: ['core'] },
-  fullLower: { m1: ['squat'], m2: ['hinge'], a1: ['push_h', 'push_v'], a2: ['lunge'], a3: ['pull_h', 'pull_v'], a4: ['glute', 'ham'], a5: ['power'], c1: ['core'] },
-  fullUpper: { m1: ['push_h', 'push_v'], m2: ['pull_h', 'pull_v'], a1: ['squat', 'lunge'], a2: ['push_v', 'push_h'], a3: ['pull_v', 'pull_h'], a4: ['hinge', 'glute'], a5: ['shoulder', 'bi', 'tri'], c1: ['core'] },
+/** Nine stations per focus, in order; the first two are the main lifts. */
+const LIFT_STATIONS = {
+  arms: [['push_v'], ['bi'], ['tri'], ['shoulder'], ['bi'], ['tri'], ['push_v', 'shoulder'], ['bi', 'tri'], ['tri', 'bi']],
+  legs: [['squat'], ['hinge'], ['lunge'], ['glute'], ['ham', 'hinge'], ['quad', 'lunge'], ['lunge', 'squat'], ['glute', 'ham'], ['calf', 'glute']],
+  upper: [['push_h'], ['pull_h'], ['push_h'], ['pull_v', 'pull_h'], ['push_h', 'push_v'], ['pull_h', 'pull_v'], ['push_v', 'push_h'], ['pull_h', 'pull_v'], ['tri', 'push_h']],
+  core: [['glute', 'hinge'], ['squat', 'lunge'], ['core'], ['glute'], ['lunge', 'ham'], ['core'], ['glute', 'hinge'], ['core'], ['glute']],
+  fullLower: [['squat'], ['hinge'], ['push_h', 'push_v'], ['lunge'], ['pull_h', 'pull_v'], ['glute', 'ham'], ['squat', 'lunge'], ['push_v', 'push_h'], ['hinge', 'glute']],
+  fullUpper: [['push_h', 'push_v'], ['pull_h', 'pull_v'], ['squat', 'lunge'], ['push_v'], ['pull_v', 'pull_h'], ['hinge', 'glute'], ['push_h'], ['pull_h'], ['shoulder', 'bi', 'tri']],
 };
-const LIFT_LAYOUT = {
-  30: [['m1'], ['m2', 'a1'], ['a2', 'c1']],
-  45: [['m1'], ['m2'], ['a1', 'a2'], ['a3', 'c1']],
-  60: [['m1'], ['m2'], ['a1', 'a2'], ['a3', 'a4'], ['a5', 'c1']],
+/** Blocks of three stations, and how many rounds each runs, by session length. */
+const LIFT_PLAN = {
+  30: { blocks: [[0, 1, 2], [3, 4, 5]], rounds: [2, 2], abs: 3 },
+  50: { blocks: [[0, 1, 2], [3, 4, 5], [6, 7, 8]], rounds: [3, 3, 3], abs: 4 },
+  60: { blocks: [[0, 1, 2], [3, 4, 5], [6, 7, 8]], rounds: [3, 3, 3], abs: 4 },
 };
 
 const WARMUPS = {
@@ -182,7 +193,7 @@ const WARMUPS = {
 const STRETCHES = ['Hamstring Stretch', 'Hip Flexor Stretch · left', 'Hip Flexor Stretch · right', "Child's Pose", 'Chest Opener', 'Figure-4 Stretch'];
 const MOBILITY = ['Cat-Cow', "World's Greatest Stretch · left", "World's Greatest Stretch · right", '90/90 Hip Switches', 'Thread the Needle', 'Deep Squat Hold', 'Pigeon · left', 'Pigeon · right', 'Thoracic Rotations', "Child's Pose"];
 
-const bucket = (minutes) => (minutes <= 35 ? 30 : minutes <= 50 ? 45 : 60);
+const bucket = (minutes) => (minutes <= 35 ? 30 : minutes <= 55 ? 50 : 60);
 const equipKey = (s) => [...kitFor(s)].sort().join('+') || 'bw';
 
 /** A deterministic session for a date. Main lifts stay put through the cycle
@@ -190,7 +201,7 @@ const equipKey = (s) => [...kitFor(s)].sort().join('+') || 'bw';
 export function buildSession({ date, type, focus, settings, swaps = {}, salt = 0 }) {
   const cyc = cycleInfo(date, settings);
   const phase = cyc.phase;
-  const mins = bucket(settings.minutes || 45);
+  const mins = bucket(settings.minutes || 50);
   const base = { date, type, focus, phase: phase.name, phaseNote: phase.note, programWeek: cyc.programWeek, minutes: mins };
   if (type === 'rest') return { ...base, title: 'Rest day', blocks: [], estMin: 0 };
   if (type === 'recovery') return { ...base, title: 'Active recovery', ...recoveryBlocks(settings, mins, `${date}|${salt}`) };
@@ -199,39 +210,33 @@ export function buildSession({ date, type, focus, settings, swaps = {}, salt = 0
 }
 
 function liftBlocks(focus, settings, phase, mins, salt, swaps, week, date) {
-  const slots = LIFT_SLOTS[focus];
-  const eq = kitFor(settings);
+  const list = LIFT_STATIONS[focus];
+  const plan = LIFT_PLAN[mins];
+  const kit = kitFor(settings);
+  const ek = equipKey(settings);
   const used = new Set();
   const blocks = [];
   blocks.push({ id: 'warmup', kind: 'timed', title: 'Warm-up', segments: WARMUPS[focus].slice(0, mins === 30 ? 4 : 5).map((label) => ({ label, sec: 40 })) });
-  const letters = 'ABCDEFG';
-  LIFT_LAYOUT[mins].forEach((group, gi) => {
-    const items = [];
-    for (const slot of group) {
-      const main = slot.startsWith('m');
-      const seed = main ? `main|${focus}|${equipKey(settings)}|${slot}|${salt}` : `acc|${focus}|${equipKey(settings)}|${week}|${slot}|${salt}`;
-      const ex = chooseExercise(slots[slot], { equipment: eq, used, r: rng(seed), main, preferred: swaps[`lift:${focus}:${slot}`] });
-      if (!ex) continue;
-      used.add(ex.id);
-      items.push({ ...makeItem(ex, main ? 'main' : 'acc', phase, settings, mins === 30), slot, swapKey: `lift:${focus}:${slot}` });
-    }
-    if (!items.length) return;
-    if (items.length > 1) {
-      // Superset: go straight from the first move to the next, rest after the last.
-      const rest = Math.max(...items.map((i) => i.rest));
-      items.forEach((it, i) => { it.rest = i < items.length - 1 ? 15 : Math.min(rest, 90); });
-      const sets = Math.max(...items.map((i) => i.sets));
-      items.forEach((it) => { it.sets = sets; });
-    }
-    blocks.push({ id: letters[gi], kind: 'strength', title: letters[gi], style: items.length > 1 ? 'superset' : 'straight', items });
+  // With the cardio finisher on, a 50-minute session trims the last block to two rounds.
+  const rounds = [...plan.rounds];
+  if (mins === 50 && settings.finisher) rounds[rounds.length - 1] = 2;
+  plan.blocks.forEach((idx, bi) => {
+    const L = 'ABC'[bi];
+    blocks.push(stationBlock({
+      id: L, title: `Block ${L}`, tag: L, rounds: rounds[bi], list: idx.map((i) => list[i]), phase, settings, used, kit, swaps,
+      role: (i) => (idx[i] < 2 ? 'main' : 'acc'),
+      // Main lifts stay put through the cycle so you can add weight; the rest rotate weekly.
+      seed: (i) => (idx[i] < 2 ? `main|${focus}|${ek}|${idx[i]}|${salt}` : `acc|${focus}|${ek}|${week}|${idx[i]}|${salt}`),
+      keyBase: `lift:${focus}:s${idx[0]}`,
+    }));
   });
+  blocks.push(stationBlock({
+    id: 'abs', title: 'Abs finisher', tag: 'Abs', rounds: 1, list: Array.from({ length: plan.abs }, () => ['core']), phase, settings, used, kit, swaps,
+    role: () => 'acc', seed: (i) => `abs|${focus}|${ek}|${week}|${i}|${salt}|${date}`, keyBase: `lift:${focus}:abs`,
+  }));
   if (settings.finisher) blocks.push(finisher(settings, mins, phase, `${date}|${salt}`));
   blocks.push(cooldown(mins));
-  // Bodyweight sessions run long (more reps); drop an accessory pair to fit,
-  // never the last block, which carries the abs.
-  const strength = () => blocks.filter((b) => b.kind === 'strength');
-  while (estimate(blocks) > mins + 8 && strength().length > 3) blocks.splice(blocks.indexOf(strength().at(-2)), 1);
-  return { blocks, estMin: estimate(blocks) };
+  return { blocks: blocks.filter((b) => b.kind !== 'strength' || b.items.length), estMin: estimate(blocks) };
 }
 
 function cooldown(mins) {
@@ -240,7 +245,7 @@ function cooldown(mins) {
 
 /** A short burst of cardio at the end of a Lift day. */
 function finisher(settings, mins, phase, seed) {
-  const rounds = { 30: 4, 45: 6, 60: 8 }[mins];
+  const rounds = { 30: 4, 50: 6, 60: 8 }[mins];
   const r = rng(`fin|${seed}`);
   const segs = [];
   for (let i = 0; i < rounds; i += 1) {
@@ -304,14 +309,18 @@ function cardioSeg(seg, settings, phase, r) {
   return out;
 }
 
-const RED_SIZE = { 30: { warm: 180, tread: 360, rounds: 2, moves: 3 }, 45: { warm: 300, tread: 540, rounds: 3, moves: 3 }, 60: { warm: 300, tread: 720, rounds: 3, moves: 4 } };
+const RED_SIZE = {
+  30: { warm: 180, tread: [300, 240], moves: 3, rounds: 2 },
+  50: { warm: 300, tread: [720, 600], moves: 4, rounds: 2 },
+  60: { warm: 300, tread: [720, 600], moves: 5, rounds: 2 },
+};
 const FLOOR_PATTERNS = {
-  arms: ['bi', 'tri', 'shoulder', 'push_v', 'shoulder', 'bi'],
-  legs: ['squat', 'hinge', 'lunge', 'glute', 'ham', 'quad'],
-  upper: ['push_h', 'pull_h', 'pull_v', 'push_h', 'pull_h', 'push_v'],
-  core: ['glute', 'core', 'hinge', 'lunge', 'core', 'glute'],
-  fullLower: ['squat', 'hinge', 'lunge', 'push_h', 'glute', 'pull_h'],
-  fullUpper: ['push_h', 'pull_h', 'push_v', 'squat', 'pull_v', 'lunge'],
+  arms: ['bi', 'tri', 'shoulder', 'push_v', 'shoulder', 'bi', 'tri', 'push_v'],
+  legs: ['squat', 'hinge', 'lunge', 'glute', 'ham', 'quad', 'lunge', 'squat'],
+  upper: ['push_h', 'pull_h', 'pull_v', 'push_h', 'pull_h', 'push_v', 'push_h', 'pull_h'],
+  core: ['glute', 'core', 'hinge', 'lunge', 'core', 'glute', 'squat', 'core'],
+  fullLower: ['squat', 'hinge', 'lunge', 'push_h', 'glute', 'pull_h', 'squat', 'hinge'],
+  fullUpper: ['push_h', 'pull_h', 'push_v', 'squat', 'pull_v', 'lunge', 'push_h', 'pull_h'],
 };
 
 function redBlocks(date, focus, settings, phase, mins, salt, swaps) {
@@ -321,29 +330,22 @@ function redBlocks(date, focus, settings, phase, mins, salt, swaps) {
   const machineName = { treadmill: 'Tread', bike: 'Bike', rower: 'Row', run: 'Run', none: 'Cardio' }[machine];
   const [t1, t2] = shuffle(Object.keys(TREAD_TEMPLATES), r);
   const warm = fillTemplate([T(60, 'walk'), T(120, 'base', 1, -1), T(60, 'base'), T(30, 'push'), T(30, 'walk')], size.warm).map((s) => cardioSeg(s, settings, phase, r));
-  const tread = (key, n) => ({ id: `cardio${n}`, kind: 'intervals', title: `${machineName} ${n}`, sub: TREAD_TEMPLATES[key].name, segments: fillTemplate(TREAD_TEMPLATES[key].segs, size.tread).map((s) => cardioSeg(s, settings, phase, r)) });
+  const tread = (key, n) => ({ id: `cardio${n}`, kind: 'intervals', title: `${machineName} ${n}`, sub: TREAD_TEMPLATES[key].name, segments: fillTemplate(TREAD_TEMPLATES[key].segs, size.tread[n - 1]).map((s) => cardioSeg(s, settings, phase, r)) });
   const used = new Set();
   const patterns = shuffle(FLOOR_PATTERNS[focus], r);
   // Floor work is dumbbells, a bench, bands and bodyweight; skip barbells and machines if there are dumbbells.
   const all = kitFor(settings);
-  const floorKit = all.includes('db') || all.includes('kb') ? all.filter((e) => e !== 'barbell' && e !== 'machine') : all;
-  const floor = (n) => {
-    const items = [];
-    const mine = patterns.slice((n - 1) * (size.moves - 1)).concat(patterns).slice(0, size.moves - 1);
-    [...mine.map((p) => [p]), ['core']].forEach((pats, i) => {
-      const key = `red:${focus}:f${n}${i}`;
-      const ex = chooseExercise(pats, { equipment: floorKit, used, r, main: false, preferred: swaps[key] });
-      if (!ex) return;
-      used.add(ex.id);
-      items.push({ ...makeItem(ex, 'floor', phase, settings), sets: size.rounds, rest: 15, slot: `f${n}${i}`, swapKey: key });
-    });
-    if (items.length) items[items.length - 1].rest = 45;
-    return { id: `floor${n}`, kind: 'strength', style: 'circuit', title: `Floor ${n}`, sub: `${size.rounds} rounds, move to move`, items };
-  };
+  const kit = all.includes('db') || all.includes('kb') ? all.filter((e) => e !== 'barbell' && e !== 'machine') : all;
+  const n = size.moves - 1; // the last station of every round is abs
+  const floor = (k) => stationBlock({
+    id: `floor${k}`, title: `Floor ${k}`, tag: `F${k}`, rounds: size.rounds,
+    list: [...patterns.slice((k - 1) * n, k * n).map((p) => [p]), ['core']],
+    phase, settings, used, kit, swaps, role: () => 'floor', seed: (i) => `red|${date}|${focus}|${salt}|${k}|${i}`, keyBase: `red:${focus}:f${k}`,
+  });
   const blocks = [
     { id: 'warmup', kind: 'intervals', title: 'Warm-up', sub: machine === 'none' ? 'Get the heart rate up' : `Easy on the ${machine === 'run' ? 'road' : machine}`, segments: warm },
     tread(t1, 1), floor(1), tread(t2, 2), floor(2),
-    cooldown(mins === 30 ? 30 : 45),
+    cooldown(mins),
   ];
   return { blocks, estMin: estimate(blocks) };
 }
@@ -368,16 +370,16 @@ function recoveryBlocks(settings, mins, seed) {
 
 /* ------------------------------------------------------------------ estimates */
 
-function itemSeconds(it) {
-  const ex = EX_BY_ID[it.exId];
-  const work = ex.load === 't' ? it.reps : it.reps * 3;
-  return it.sets * (work * (ex.uni ? 2 : 1) + it.rest);
+/** Seconds a station block takes: work, rest between moves, water breaks between rounds. */
+export function stationSeconds(b) {
+  const work = b.items.reduce((a, it) => a + it.work, 0);
+  const rests = Math.max(0, b.items.length - 1) * (b.items[0]?.rest ?? STATION_REST);
+  return b.rounds * (work + rests) + Math.max(0, b.rounds - 1) * (b.water ?? WATER_BREAK);
 }
 export function estimate(blocks) {
   let s = 0;
   for (const b of blocks) {
-    if (b.kind === 'strength') s += b.items.reduce((a, it) => a + itemSeconds(it), 0);
-    else s += b.segments.reduce((a, x) => a + x.sec, 0);
+    s += b.kind === 'strength' ? stationSeconds(b) : b.segments.reduce((a, x) => a + x.sec, 0);
     s += 30; // moving between blocks
   }
   return Math.round(s / 60);
@@ -389,9 +391,7 @@ export const blockSeconds = (b) => (b.segments || []).reduce((a, x) => a + x.sec
 
 /** Other moves for the same slot with the kit on hand. */
 export function alternatives(item, block, focus, type, equipment) {
-  let patterns;
-  if (type === 'lift') patterns = LIFT_SLOTS[focus][item.slot];
-  else patterns = [EX_BY_ID[item.exId].pattern];
+  const patterns = item.pats || [EX_BY_ID[item.exId].pattern];
   const taken = new Set(block.items.map((i) => i.exId));
   return candidatesFor(patterns, equipment).filter((e) => e.id === item.exId || !taken.has(e.id));
 }

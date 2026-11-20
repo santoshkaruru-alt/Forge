@@ -11,9 +11,9 @@ choose the room:
 Workouts adapt to wherever you are: your usual gym, a hotel gym, a hotel room
 floor or a park. Everything runs on your device, no account, works offline.
 
-| Today | Week | Workout | How to | Treadmill timer | Progress |
-|---|---|---|---|---|---|
-| ![Today](docs/screen-today.png) | ![Week](docs/screen-week.png) | ![Workout](docs/screen-workout.png) | ![How to](docs/screen-howto.png) | ![Timer](docs/screen-timer.png) | ![Progress](docs/screen-progress.png) |
+| Today | Week | Workout | Station timer | How to | Treadmill timer | Progress |
+|---|---|---|---|---|---|---|
+| ![Today](docs/screen-today.png) | ![Week](docs/screen-week.png) | ![Workout](docs/screen-workout.png) | ![Station timer](docs/screen-station.png) | ![How to](docs/screen-howto.png) | ![Timer](docs/screen-timer.png) | ![Progress](docs/screen-progress.png) |
 
 ## How it's laid out
 
@@ -53,16 +53,24 @@ Four tabs:
   exercise uses dumbbells, a bench or just your body (push-ups, planks, lunges).
   Even at a full gym it skips barbells, machines, cables, kettlebells, bands and
   pull-up bars. Turn it off in Settings → Where you train to use them.
-- **4-week cycles, all year**: Base (3 x 10), Build (4 x 8), Peak (4 x 6), then a
-  lighter Deload week, and repeat. Main lifts stay the same through a cycle so
-  you can add weight; accessories rotate weekly.
-- **Red Room**: warm-up, then two rounds of treadmill block + floor circuit
-  (dumbbells, bench, bands, bodyweight), then a cool-down. Treadmill blocks use
+- **Timed stations, like a class**: every floor move is **50 seconds on, 25
+  seconds rest**, a round is 3 to 5 moves, and there is a **1-minute water
+  break** between rounds. Rest and water break can be changed in Settings.
+- **4-week cycles, all year**: Base, Build and Peak get a little heavier each
+  week (the target reps drop from about 10 to 8 to 6 on the main lifts), then a
+  lighter Deload week runs 40 seconds on. Main lifts stay the same through a
+  cycle so you can add weight; other moves rotate weekly.
+- **Red Room** (about 50 min): warm-up, Tread 1 (12 min), Floor 1 (4 moves x 2
+  rounds, the last move is abs), Tread 2 (10 min), Floor 2 (4 moves x 2
+  rounds), cool-down. Treadmill blocks use
   your own Recover / Base / Push / All out speeds (pyramids, hill climbs,
   sprint ladders, tempo builds) and get a little faster each week. No treadmill?
   The same blocks become bike, rower, outdoor run or bodyweight cardio.
-- **Lift Room**: warm-up, two main lifts, supersets, optional cardio finisher,
-  cool-down.
+- **Lift Room** (about 50 min): warm-up, Blocks A, B and C (3 moves x 3
+  rounds each, heavier weights and a slower tempo), an abs finisher (4 moves),
+  an optional cardio finisher, cool-down. The first two moves of Block A are
+  the main lifts.
+- **Session length** 30, 50 or 60 minutes adds or removes rounds and moves.
 - **Weight suggestions** from your last session: hit every rep and it adds 5 lb
   (2 to 2.5 kg); when the reps change it works out the right weight.
 
@@ -87,8 +95,13 @@ hands stay on the floor, bar or bench. Everything works offline.
 
 ## Workout mode
 
-Step chips at the top show where you are and jump to any block. Log each set
-with one tap, and a rest timer starts showing what's next. Swap any exercise
+Step chips at the top show where you are and jump to any block. Tap **Start
+stations** on a floor block and the timer runs it like a class: a 50-second
+countdown with the move's animation, the weight to use and the reps to aim
+for (one-sided moves beep halfway to switch sides), then a 25-second rest
+showing what's next, and a 1-minute water break between rounds. Each move is
+logged as you finish it; adjust the weight or reps during the rest. You can
+also log rounds by hand on the block card. Swap any exercise
 (it remembers), see form cues and a demo link, and run a full-screen interval
 timer whose color tells you the effort: blue for easy, purple for base, orange
 for push, red for all out. The screen stays awake while you train.

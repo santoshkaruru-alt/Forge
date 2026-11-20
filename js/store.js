@@ -11,19 +11,21 @@ const usesPounds = () => {
 };
 
 export const DEFAULTS = () => ({
-  version: 4,
+  version: 5,
   settings: {
     unit: usesPounds() ? 'lb' : 'kg',
     theme: 'auto',
-    minutes: 45,
+    minutes: 50,
     location: 'gym',
     equipment: [...LOCATIONS[0].equipment],
     cardio: LOCATIONS[0].cardio,
     speeds: { walk: 3.5, base: 6.0, push: 7.5, sprint: 9.0 }, // mph
     finisher: true,
     sound: true,
-    restMain: 120,
+    restMain: 120, // used by manual set logging only
     restAcc: 60,
+    stationRest: 25, // seconds between floor moves
+    water: 60, // water break between rounds
     dbOnly: true, // dumbbells and bodyweight only, like the studio floor
     goal: DEFAULT_WEEK.filter((t) => t !== 'rest').length, // sessions a week
     programStart: mondayOf(toISO(new Date())), // week 1 of the current 4-week cycle
@@ -73,6 +75,12 @@ export function migrate(parsed) {
   if (out.version < 4) {
     // Studio style: dumbbells and bodyweight only, on by default.
     out = { ...out, version: 4, settings: { ...(out.settings || {}), dbOnly: true } };
+  }
+  if (out.version < 5) {
+    // Timed stations: 50-minute class length replaces 45.
+    const s = { ...(out.settings || {}) };
+    if (s.minutes === 45) s.minutes = 50;
+    out = { ...out, version: 5, settings: s };
   }
   return out;
 }
